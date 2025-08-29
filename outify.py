@@ -66,43 +66,78 @@ def find_existing_song_ext(dir, artist, album, track, title, ext):
     return False
 
 
+def artists_combinations(artist_objects):
+    list_length = len(artist_objects)
+    if list_length == 1:
+        return artist_objects
+    combine_chars= [' & ', ', ']
+    possibilites = []
+    if list_length == 2:
+        possibilites.append(artist_objects[0])
+        possibilites.append(artist_objects[1])
+        for char in combine_chars:
+            possibilites.append(artist_objects[0] + char + artist_objects[1])
+            possibilites.append(artist_objects[1] + char + artist_objects[0])
+    else:
+        # not optimal but works for now
+        for i in range(0, list_length):
+            current = artist_objects[i]
+            part = artist_objects[0:i] + artist_objects[i + 1:len(artist_objects)]
+            new_combinations = artists_combinations(part)
+            possibilites = possibilites + new_combinations
+            for nc in new_combinations:
+                for char in combine_chars:
+                    possibilites.append(nc + char + current)
+                    possibilites.append(current + char + nc)
+        # to clear duplicates
+        possibilites = list(set(possibilites))
+
+    return possibilites
+
+
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
+        print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']}")
         playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
         playlist_file=open(dir + '/' + playlist_file_name, 'w')
         playlist_file.write('#EXTM3U\n')
 
-        print(f"{i + 1 + playlists['offset']:4d} {playlist['name']}")
         playlist_tracks = sp.playlist_items(playlist['uri'])
         print(f"Has {playlist_tracks['total']} songs")
         found=0
         while playlist_tracks:
+            total = playlist_tracks['total']
             for i, track_item in enumerate(playlist_tracks['items']):
                 track = track_item['track']
                 if not track:
                     continue
-                artist= track['artists'][0]['name']
                 album= track['album']['name']
                 title= track['name']
                 track_number= track['track_number']
-                existing_file = find_existing_song(dir, artist, album, track_number, title)
-                if existing_file:
-                    playlist_file.write(existing_file)
-                    playlist_file.write('\n')
-                    found = found + 1
+                print(f"\rSearching for {i}/{total} {title}", end='')
+                artist_names= list(map(lambda artist: artist['name'], track['artists']))
+                possibilities = artists_combinations(artist_names)
+                for artist in possibilities:
+                    existing_file = find_existing_song(dir, artist, album, track_number, title)
+                    if existing_file:
+                        playlist_file.write(existing_file)
+                        playlist_file.write('\n')
+                        found = found + 1
+                        break
+
+
             if playlist_tracks['next']:
-                print('next')
                 playlist_tracks = sp.next(playlist_tracks)
             else:
                 playlist_tracks = None
 
         playlist_file.close()
         if found == 0:
-            print('No tracks found, delete playlist')
+            print('\rNo tracks found, delete playlist')
             os.remove(dir + '/' + playlist_file_name)
         else:
-            print(f"Found {found} tracks")
+            print(f"\rFound {found} tracks")
         exit(0)
 
 
