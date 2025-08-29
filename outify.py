@@ -4,13 +4,20 @@ import os
 from time import sleep
 from spotipy.oauth2 import SpotifyOAuth
 
+WARNING = '\033[93m'
+ENDC = '\033[0m'
+
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
+parser.add_argument("--playlist", help='Only import this playlist')
 parser.add_argument("--playlist-prefix", default='outify-')
+parser.add_argument("--auto", action='store_true')
 args=parser.parse_args()
 
 dir = args.dir
 playlist_prefix = args.playlist_prefix
+auto = args.auto
+single_playlist = args.playlist
 
 scope = "user-library-read,playlist-read-private"
 
@@ -78,6 +85,9 @@ def artists_combinations(artist_objects):
         for char in combine_chars:
             possibilites.append(artist_objects[0] + char + artist_objects[1])
             possibilites.append(artist_objects[1] + char + artist_objects[0])
+    elif list_length > 4:
+        print(f"\n{WARNING}List too long for combinations, will only use 4 first artists: {artist_objects}{ENDC}")
+        return artists_combinations(artist_objects[0:4])
     else:
         # not optimal but works for now
         for i in range(0, list_length):
@@ -89,6 +99,7 @@ def artists_combinations(artist_objects):
                 for char in combine_chars:
                     possibilites.append(nc + char + current)
                     possibilites.append(current + char + nc)
+            possibilites = list(set(possibilites))
         # to clear duplicates
         possibilites = list(set(possibilites))
 
@@ -98,6 +109,11 @@ def artists_combinations(artist_objects):
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
+        if single_playlist:
+            if playlist['name'] != single_playlist:
+                continue
+            else:
+                print('Importing single playlist ' + single_playlist)
         print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']}")
         playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
         playlist_file=open(dir + '/' + playlist_file_name, 'w')
@@ -115,16 +131,20 @@ while playlists:
                 album= track['album']['name']
                 title= track['name']
                 track_number= track['track_number']
-                print(f"\rSearching for {i}/{total} {title}", end='')
+                print(f"\rSearching for {i + 1}/{total} {title}", end='')
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
+                current_found = False
                 for artist in possibilities:
                     existing_file = find_existing_song(dir, artist, album, track_number, title)
                     if existing_file:
                         playlist_file.write(existing_file)
                         playlist_file.write('\n')
                         found = found + 1
+                        current_found = True
                         break
+                if not current_found and not auto:
+                    print(f"\n{WARNING}TODO allow manual file selection {title}{ENDC}")
 
 
             if playlist_tracks['next']:
@@ -138,7 +158,6 @@ while playlists:
             os.remove(dir + '/' + playlist_file_name)
         else:
             print(f"\rFound {found} tracks")
-        exit(0)
 
 
     if playlists['next']:
