@@ -1,6 +1,9 @@
+import json
+
 import spotipy
 import argparse
 import os
+import re
 from time import sleep
 from spotipy.oauth2 import SpotifyOAuth
 import tkinter as tk
@@ -27,6 +30,22 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
 exts = ['.mp3', '.m4a']
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
+suffixes_regex='( - | \\().*(remaster|radio edit|original mix|version).*\\)?'
+exts_regex= '(\\.mp3|\\.m4a)'
+
+database = {}
+
+database_path = dir + '/.outify_database.json'
+if os.path.isfile(database_path):
+    database_file = open(database_path, 'r')
+    database = json.load(database_file)
+
+if 'songs_to_files' in database:
+    songs_to_files = database['songs_to_files']
+else:
+    songs_to_files = {}
+    database['songs_to_files'] = songs_to_files
+
 
 def find_existing_song(dir, artist, album, track, title):
     for ext in exts:
@@ -35,9 +54,17 @@ def find_existing_song(dir, artist, album, track, title):
             return ext_path
     artist_dir_exists = os.path.isdir(dir + '/' + artist)
     if artist_dir_exists:
-        return find_recursive_track(dir + '/' + artist, track, title)
+        recursive_track = find_recursive_track(dir + '/' + artist, track, title)
+        if recursive_track:
+            return recursive_track[len(dir)+1:]
     return None
 
+
+def clean_title(title):
+    suffix=re.search(suffixes_regex, title, re.IGNORECASE)
+    if suffix:
+        return re.sub(suffixes_regex, '', title, flags=re.IGNORECASE)
+    return title
 
 def find_recursive_track(dir, track, title):
     dir_content = os.listdir(dir)
@@ -48,17 +75,10 @@ def find_recursive_track(dir, track, title):
             if recursive_dir_found:
                 return recursive_dir_found
         else:
-            lowerfile = file.lower()
-            for ext in exts:
-                title_ext = title + ext
-                str_track = str(track)
-                lower_title_ext = title_ext.lower()
-                if lowerfile == lower_title_ext:
-                    return dir + '/' + title_ext
-                elif lowerfile == str_track + ' ' + lower_title_ext:
-                    return dir + '/' + str_track + ' ' + title_ext
-                elif lowerfile == '0' + str_track + ' ' + lower_title_ext:
-                    return dir + '/' + '0' + str_track + ' ' + title_ext
+            regexp_compatible_title = title.replace("(", "\\(").replace(")", "\\)")
+            regexp = '^([0-9\\- ]+ )?' + regexp_compatible_title + '(' + suffixes_regex + ')?' + exts_regex + '$'
+            if re.search(regexp, file, re.IGNORECASE):
+                return dir + '/' + file
 
     return None
 
@@ -164,9 +184,9 @@ while playlists:
                 album= track['album']['name']
                 title= track['name']
                 track_number= track['track_number']
-                print(f"\rSearching for {i + 1}/{total} {title}", end='')
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
+                print(f"\rSearching for {i + 1}/{total} {possibilities[0]} - {title}", end='')
                 current_found = False
                 for artist in possibilities:
                     existing_file = find_existing_song(dir, artist, album, track_number, title)
@@ -176,12 +196,41 @@ while playlists:
                         found = found + 1
                         current_found = True
                         break
-                if not current_found and not auto:
-                    manual_value = get_manual_song(dir, title, possibilities[0])
-                    if manual_value:
-                        playlist_file.write(manual_value)
-                        found = found + 1
-                        playlist_file.write('\n')
+                    else:
+                        ctitle = clean_title(title)
+                        if ctitle != title:
+                            existing_file = find_existing_song(dir, artist, album, track_number, ctitle)
+                            if existing_file:
+                                playlist_file.write(existing_file)
+                                playlist_file.write('\n')
+                                found = found + 1
+                                current_found = True
+                                break
+
+                if not current_found:
+                    existing_in_mapping = songs_to_files.get(track['id'], None)
+                    if existing_in_mapping:
+                        if os.path.exists(existing_in_mapping):
+                            playlist_file.write(existing_in_mapping)
+                            playlist_file.write('\n')
+                            found = found + 1
+                            current_found = True
+                        elif os.path.exists(dir + '/' + existing_in_mapping):
+                            playlist_file.write(existing_in_mapping)
+                            playlist_file.write('\n')
+                            found = found + 1
+                            current_found = True
+
+                if not current_found:
+                    if not auto:
+                        manual_value = get_manual_song(dir, title, possibilities[0])
+                        if manual_value:
+                            playlist_file.write(manual_value)
+                            found = found + 1
+                            songs_to_files[track['id']] = manual_value
+                            playlist_file.write('\n')
+                    else:
+                        print(f"{WARNING} Song not found {ENDC}")
 
 
             if playlist_tracks['next']:
@@ -201,3 +250,6 @@ while playlists:
         playlists = sp.next(playlists)
     else:
         playlists = None
+
+database_file = open(database_path, 'w')
+json.dump(database, database_file)
