@@ -1,4 +1,5 @@
 import json
+import logging
 
 import spotipy
 import argparse
@@ -17,16 +18,22 @@ parser.add_argument("--dir", required=True)
 parser.add_argument("--playlist", help='Only import this playlist')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
+parser.add_argument("--only-self", action='store_true')
 args=parser.parse_args()
 
 dir = args.dir
 playlist_prefix = args.playlist_prefix
 auto = args.auto
 single_playlist = args.playlist
+only_self = args.only_self
 
 scope = "user-library-read,playlist-read-private"
 
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
+
+self_id=sp.current_user()['id']
+logging.debug(f"self profile id is {self_id}")
+
 exts = ['.mp3', '.m4a']
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
@@ -75,7 +82,7 @@ def find_recursive_track(dir, track, title):
             if recursive_dir_found:
                 return recursive_dir_found
         else:
-            regexp_compatible_title = title.replace("(", "\\(").replace(")", "\\)")
+            regexp_compatible_title = title.replace("\\", "\\\\").replace("*", "\\*").replace("(", "\\(").replace(")", "\\)")
             regexp = '^([0-9\\- ]+ )?' + regexp_compatible_title + '(' + suffixes_regex + ')?' + exts_regex + '$'
             if re.search(regexp, file, re.IGNORECASE):
                 return dir + '/' + file
@@ -169,6 +176,11 @@ while playlists:
             else:
                 print('Importing single playlist ' + single_playlist)
         print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']} - has {playlist['tracks']['total']} songs")
+        if only_self:
+            is_self = playlist['owner']['id'] == self_id
+            if not is_self:
+                print('Skip not self playlist')
+                continue
         playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
         playlist_file=open(dir + '/' + playlist_file_name, 'w')
         playlist_file.write('#EXTM3U\n')
@@ -177,6 +189,7 @@ while playlists:
         found=0
         while playlist_tracks:
             total = playlist_tracks['total']
+            offset = playlist_tracks['offset']
             for i, track_item in enumerate(playlist_tracks['items']):
                 track = track_item['track']
                 if not track:
@@ -186,7 +199,7 @@ while playlists:
                 track_number= track['track_number']
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
-                print(f"\rSearching for {i + 1}/{total} {possibilities[0]} - {title}", end='')
+                print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
                 current_found = False
                 for artist in possibilities:
                     existing_file = find_existing_song(dir, artist, album, track_number, title)
