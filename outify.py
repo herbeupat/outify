@@ -3,6 +3,8 @@ import argparse
 import os
 from time import sleep
 from spotipy.oauth2 import SpotifyOAuth
+import tkinter as tk
+from tkinter import filedialog
 
 WARNING = '\033[93m'
 ENDC = '\033[0m'
@@ -22,26 +24,27 @@ single_playlist = args.playlist
 scope = "user-library-read,playlist-read-private"
 
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
+exts = ['.mp3', '.m4a']
+dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
 
 def find_existing_song(dir, artist, album, track, title):
-    exts = ['.mp3', '.m4a']
     for ext in exts:
         ext_path=find_existing_song_ext(dir, artist, album, track, title, ext)
         if ext_path:
             return ext_path
     artist_dir_exists = os.path.isdir(dir + '/' + artist)
     if artist_dir_exists:
-        return find_recursive_track(dir + '/' + artist, track, title, exts)
+        return find_recursive_track(dir + '/' + artist, track, title)
     return None
 
 
-def find_recursive_track(dir, track, title, exts):
+def find_recursive_track(dir, track, title):
     dir_content = os.listdir(dir)
     for file in dir_content:
         sub_dir = dir + '/' + file
         if os.path.isdir(sub_dir):
-            recursive_dir_found = find_recursive_track(sub_dir, track, title, exts)
+            recursive_dir_found = find_recursive_track(sub_dir, track, title)
             if recursive_dir_found:
                 return recursive_dir_found
         else:
@@ -106,6 +109,37 @@ def artists_combinations(artist_objects):
     return possibilites
 
 
+def get_manual_song(dir, title, artist):
+    while True:
+        print(f"\nSong {artist} - {title} not found, what do you want to do ? ")
+        print("s - skip")
+        print("m - enter manual path")
+        print("d - open file dialog")
+        choice = input("Enter s, m or d\n")
+        if choice == 's':
+            print('Skipped')
+            return None
+        elif choice == 'm':
+            path = input("Enter file path\n")
+            if path.startswith(dir + '/'):
+                return path[len(dir)+1:]
+            else:
+                return path
+        elif choice == 'd':
+            root = tk.Tk()
+            root.withdraw()
+
+            file_path = filedialog.askopenfilename(initialdir=dir, filetypes=dialog_file_types)
+            if file_path:
+                if file_path.startswith(dir + '/'):
+                    return file_path[len(dir)+1:]
+                else:
+                    return file_path
+
+        else:
+            print(f"Wrong choice {choice}")
+
+
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
@@ -114,13 +148,12 @@ while playlists:
                 continue
             else:
                 print('Importing single playlist ' + single_playlist)
-        print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']}")
+        print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']} - has {playlist['tracks']['total']} songs")
         playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
         playlist_file=open(dir + '/' + playlist_file_name, 'w')
         playlist_file.write('#EXTM3U\n')
 
         playlist_tracks = sp.playlist_items(playlist['uri'])
-        print(f"Has {playlist_tracks['total']} songs")
         found=0
         while playlist_tracks:
             total = playlist_tracks['total']
@@ -144,7 +177,11 @@ while playlists:
                         current_found = True
                         break
                 if not current_found and not auto:
-                    print(f"\n{WARNING}TODO allow manual file selection {title}{ENDC}")
+                    manual_value = get_manual_song(dir, title, possibilities[0])
+                    if manual_value:
+                        playlist_file.write(manual_value)
+                        found = found + 1
+                        playlist_file.write('\n')
 
 
             if playlist_tracks['next']:
