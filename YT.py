@@ -22,6 +22,12 @@ class YT:
             print(f"{WARNING} cannot find ffmpeg in path, YT won't work")
         return has_yt_dlp and has_ffmpeg
 
+
+    @staticmethod
+    def is_youtube_url(url: str):
+        return url.startswith('https://music.youtube.com/watch?v=') or url.startswith("https://www.youtube.com/watch?")
+
+
     def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> str | None:
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
@@ -54,6 +60,7 @@ class YT:
         tag_file["artist"] = ", ".join(artists)
         tag_file["album"] = album
         tag_file["title"] = title
+        tag_file["date"] = year
         tag_file["tracknumber"] = str(track)
         tag_file.save()
 

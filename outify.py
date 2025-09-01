@@ -181,7 +181,7 @@ def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
                 return file
             else:
                 print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
-        elif choice.startswith("https://www.youtube.com/watch?"):
+        elif can_yt and YT.is_youtube_url(choice):
             file = YT.download(choice, artists, album, track, title, year, album_cover_url)
             if file:
                 return file
@@ -263,7 +263,7 @@ while playlists:
 
                 if not current_found:
                     if not auto:
-                        year = track['album']['release_date'][0:4]
+                        year = track['album']['release_date']
                         album_cover_url = track['album']['images'][0]['url']
                         manual_value = get_manual_song(dir, title, album, artist_names, track_number, year, album_cover_url)
                         if manual_value:
