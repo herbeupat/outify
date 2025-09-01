@@ -10,8 +10,9 @@ from spotipy.oauth2 import SpotifyOAuth
 import tkinter as tk
 from tkinter import filedialog
 
-WARNING = '\033[93m'
-ENDC = '\033[0m'
+import utils
+from utils import *
+from YT import YT
 
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
@@ -52,6 +53,14 @@ if 'songs_to_files' in database:
 else:
     songs_to_files = {}
     database['songs_to_files'] = songs_to_files
+
+
+YT = YT(dir)
+can_yt = YT.can_run_basic()
+
+def before_exit():
+    database_file = open(database_path, 'w')
+    json.dump(database, database_file)
 
 
 def find_existing_song(dir, artist, album, track, title):
@@ -136,12 +145,15 @@ def artists_combinations(artist_objects):
     return possibilites
 
 
-def get_manual_song(dir, title, artist):
+def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
     while True:
-        print(f"\nSong {artist} - {title} not found, what do you want to do ? ")
+        print(f"\nSong {artists} - {title} not found, what do you want to do ? ")
         print("s - skip")
         print("m - enter manual path")
         print("d - open file dialog")
+        print("q - stop for now, quit")
+        if can_yt:
+            print("y - from Youtube URL (you may also directly paste Youtube URL)")
         choice = input("Enter s, m or d\n")
         if choice == 's':
             print('Skipped')
@@ -162,7 +174,22 @@ def get_manual_song(dir, title, artist):
                     return file_path[len(dir)+1:]
                 else:
                     return file_path
-
+        elif choice == 'y' and can_yt:
+            url = input("Enter Youtube url\n")
+            file = YT.download(url, artists, album, track, title, year, album_cover_url)
+            if file:
+                return file
+            else:
+                print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
+        elif choice.startswith("https://www.youtube.com/watch?"):
+            file = YT.download(choice, artists, album, track, title, year, album_cover_url)
+            if file:
+                return file
+            else:
+                print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
+        elif choice == 'q':
+            before_exit()
+            exit(0)
         else:
             print(f"Wrong choice {choice}")
 
@@ -236,7 +263,9 @@ while playlists:
 
                 if not current_found:
                     if not auto:
-                        manual_value = get_manual_song(dir, title, possibilities[0])
+                        year = track['album']['release_date'][0:4]
+                        album_cover_url = track['album']['images'][0]['url']
+                        manual_value = get_manual_song(dir, title, album, artist_names, track_number, year, album_cover_url)
                         if manual_value:
                             playlist_file.write(manual_value)
                             found = found + 1
@@ -264,5 +293,4 @@ while playlists:
     else:
         playlists = None
 
-database_file = open(database_path, 'w')
-json.dump(database, database_file)
+before_exit()
