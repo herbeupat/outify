@@ -27,6 +27,9 @@ playlist_prefix = args.playlist_prefix
 auto = args.auto
 single_playlist = args.playlist
 only_self = args.only_self
+overrides = {
+    'skip_for_current_playlist': auto
+}
 
 scope = "user-library-read,playlist-read-private"
 
@@ -148,13 +151,14 @@ def artists_combinations(artist_objects):
 def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
     while True:
         print(f"\nSong {artists} - {title} not found, what do you want to do ? ")
-        print("s - skip")
+        print("s - skip song")
         print("m - enter manual path")
         print("d - open file dialog")
         print("q - stop for now, quit")
+        print("sp - skip all missing song in this playlist")
         if can_yt:
             print("y - from Youtube URL (you may also directly paste Youtube URL)")
-        choice = input("Enter s, m or d\n")
+        choice = input("Enter s, m, q, sp, y or d\n")
         if choice == 's':
             print('Skipped')
             return None
@@ -190,9 +194,15 @@ def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
         elif choice == 'q':
             before_exit()
             exit(0)
+        elif choice == 'sp':
+            overrides['skip_for_current_playlist'] = True
+            print(f"{WARNING} skip all following missing files from this playlist{ENDC}")
+            return None
         else:
             print(f"Wrong choice {choice}")
 
+if single_playlist:
+    print(f"Will only process playlist named {single_playlist}")
 
 playlists = sp.current_user_playlists()
 while playlists:
@@ -208,6 +218,10 @@ while playlists:
             if not is_self:
                 print('Skip not self playlist')
                 continue
+
+        # reset overrides
+        overrides['skip_for_current_playlist'] = auto
+
         playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
         playlist_file=open(dir + '/' + playlist_file_name, 'w')
         playlist_file.write('#EXTM3U\n')
@@ -261,8 +275,10 @@ while playlists:
                             found = found + 1
                             current_found = True
 
+                skip_for_current_playlist = overrides['skip_for_current_playlist']
+
                 if not current_found:
-                    if not auto:
+                    if not skip_for_current_playlist:
                         year = track['album']['release_date']
                         album_cover_url = track['album']['images'][0]['url']
                         manual_value = get_manual_song(dir, title, album, artist_names, track_number, year, album_cover_url)
