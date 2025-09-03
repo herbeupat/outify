@@ -5,14 +5,10 @@ import spotipy
 import argparse
 import os
 import re
-from time import sleep
 from spotipy.oauth2 import SpotifyOAuth
-import tkinter as tk
-from tkinter import filedialog
 
-import utils
+from ManualSongSelector import ManualSongSelector
 from utils import *
-from YT import YT
 
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
@@ -41,7 +37,6 @@ self_id=sp.current_user()['id']
 logging.debug(f"self profile id is {self_id}")
 
 exts = ['.mp3', '.m4a']
-dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
 suffixes_regex='( - | \\().*(remaster|radio edit|original mix|version).*\\)?'
 exts_regex= '(\\.mp3|\\.m4a)'
@@ -59,9 +54,7 @@ else:
     songs_to_files = {}
     database['songs_to_files'] = songs_to_files
 
-
-YT = YT(dir, search_limit)
-can_yt = YT.can_run_basic()
+manual_song = ManualSongSelector(dir, search_limit)
 
 def before_exit():
     database_file = open(database_path, 'w')
@@ -150,64 +143,6 @@ def artists_combinations(artist_objects):
     return possibilites
 
 
-def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
-    while True:
-        print(f"\nSong {artists} - {title} not found, what do you want to do ? ")
-        print("s - skip song")
-        print("m - enter manual path")
-        print("d - open file dialog")
-        print("q - stop for now, quit")
-        print("sp - skip all missing song in this playlist")
-        if can_yt:
-            print("y - from Youtube URL (you may also directly paste Youtube URL)")
-            print("ys - search from Youtube music")
-        choice = input("Enter s, m, q, sp, y, ys or d\n")
-        if choice == 's':
-            print('Skipped')
-            return None
-        elif choice == 'm':
-            path = input("Enter file path\n")
-            if path.startswith(dir + '/'):
-                return path[len(dir)+1:]
-            else:
-                return path
-        elif choice == 'd':
-            root = tk.Tk()
-            root.withdraw()
-
-            file_path = filedialog.askopenfilename(initialdir=dir, filetypes=dialog_file_types)
-            if file_path:
-                if file_path.startswith(dir + '/'):
-                    return file_path[len(dir)+1:]
-                else:
-                    return file_path
-        elif choice == 'y' and can_yt:
-            url = input("Enter Youtube url\n")
-            file = YT.download(url, artists, album, track, title, year, album_cover_url)
-            if file:
-                return file
-            else:
-                print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
-        elif can_yt and YT.is_youtube_url(choice):
-            file = YT.download(choice, artists, album, track, title, year, album_cover_url)
-            if file:
-                return file
-            else:
-                print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
-        elif can_yt and choice == 'ys':
-            file = YT.search_yt_music(artists, album, track, title, year, album_cover_url)
-            if file:
-                return file
-        elif choice == 'q':
-            before_exit()
-            exit(0)
-        elif choice == 'sp':
-            overrides['skip_for_current_playlist'] = True
-            print(f"{WARNING} skip all following missing files from this playlist{ENDC}")
-            return None
-        else:
-            print(f"Wrong choice {choice}")
-
 if single_playlist:
     print(f"Will only process playlist named {single_playlist}")
 
@@ -288,8 +223,13 @@ while playlists:
                     if not skip_for_current_playlist:
                         year = track['album']['release_date']
                         album_cover_url = track['album']['images'][0]['url']
-                        manual_value = get_manual_song(dir, title, album, artist_names, track_number, year, album_cover_url)
-                        if manual_value:
+                        manual_value = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
+                        if manual_value == 'BEFORE_EXIT':
+                            before_exit()
+                            exit(0)
+                        elif manual_value == 'SKIP_FOR_CURRENT_PLAYLIST':
+                            overrides['skip_for_current_playlist'] = True
+                        elif manual_value:
                             playlist_file.write(manual_value)
                             found = found + 1
                             songs_to_files[track['id']] = manual_value
