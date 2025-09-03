@@ -4,6 +4,8 @@ import subprocess
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, PictureType
 import urllib.request
+
+from simple_term_menu import TerminalMenu
 from ytmusicapi import YTMusic
 import re
 
@@ -90,24 +92,21 @@ class YT:
 
     def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> str | None:
         search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
-        print(str(search_results))
-        print('Select a song in the following list')
+        options = []
+        if len(search_results) == 0:
+            print(f"{WARNING} No result {ENDC}")
+            return None
         for i, item in enumerate(search_results):
             video_artists=list(map(lambda artist: artist['name'], item['artists']))
-            print(f"{i + 1: 2d} {item['title']} - {", ".join(video_artists)}")
-        selection = '?'
-        while selection == '?':
-            selection = input('Enter the number of the song, empty for first one, or a to abort')
-            if selection == 'a':
-                return None
-            is_number = re.match('([0-9]+)', selection)
-            if is_number:
-                number = int(is_number.group(1))
-                if number >= len(search_results):
-                    print(f"{WARNING} wrong number {number}")
-                else:
-                    url = 'https://music.youtube.com/watch?v=' + search_results[number - 1]['videoId']
-                    return self.download(url, artists, album, track, title, year, image_url)
+            print()
+            option = f"{i + 1: 2d} {item['title']} - {", ".join(video_artists)}"
+            options.append(option)
+        options.append("[a] abort")
+        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {", ".join(artists)}")
+        selected = terminal_menu.show()
+        if selected == len(options) - 1:
+            return None
 
-            selection = '?'
-        return None
+        url = 'https://music.youtube.com/watch?v=' + search_results[selected - 1]['videoId']
+        return self.download(url, artists, album, track, title, year, image_url)
+

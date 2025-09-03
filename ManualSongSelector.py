@@ -15,7 +15,7 @@ class ManualSongSelector:
         self.can_yt = self.yt_instance.can_run_basic()
         options = [
             "[m] enter manual path",
-            "[o] open file dialog",
+            "[d] open file dialog",
             "[q] stop for now and quit",
             "[s] skip song",
             "[t] skip all missing songs in this playlist",
