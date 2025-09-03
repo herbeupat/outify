@@ -20,6 +20,7 @@ parser.add_argument("--playlist", help='Only import this playlist')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
 parser.add_argument("--only-self", action='store_true')
+parser.add_argument("--search-limit", type=int, default=10)
 args=parser.parse_args()
 
 dir = args.dir
@@ -30,6 +31,7 @@ only_self = args.only_self
 overrides = {
     'skip_for_current_playlist': auto
 }
+search_limit = args.search_limit
 
 scope = "user-library-read,playlist-read-private"
 
@@ -58,7 +60,7 @@ else:
     database['songs_to_files'] = songs_to_files
 
 
-YT = YT(dir)
+YT = YT(dir, search_limit)
 can_yt = YT.can_run_basic()
 
 def before_exit():
@@ -158,7 +160,8 @@ def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
         print("sp - skip all missing song in this playlist")
         if can_yt:
             print("y - from Youtube URL (you may also directly paste Youtube URL)")
-        choice = input("Enter s, m, q, sp, y or d\n")
+            print("ys - search from Youtube music")
+        choice = input("Enter s, m, q, sp, y, ys or d\n")
         if choice == 's':
             print('Skipped')
             return None
@@ -191,6 +194,10 @@ def get_manual_song(dir, title, album, artists, track, year, album_cover_url):
                 return file
             else:
                 print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
+        elif can_yt and choice == 'ys':
+            file = YT.search_yt_music(artists, album, track, title, year, album_cover_url)
+            if file:
+                return file
         elif choice == 'q':
             before_exit()
             exit(0)

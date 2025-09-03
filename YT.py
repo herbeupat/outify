@@ -4,14 +4,17 @@ import subprocess
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, PictureType
 import urllib.request
+from ytmusicapi import YTMusic
+import re
 
 from utils import *
 
 class YT:
 
-    def __init__(self, base_dir):
+    def __init__(self, base_dir, search_limit):
         self.base_dir = base_dir
-
+        self.ytmusic = YTMusic()
+        self.search_limit = search_limit
 
     def can_run_basic(self) -> bool:
         has_yt_dlp = shutil.which('yt-dlp') is not None
@@ -83,3 +86,28 @@ class YT:
         os.remove(file_path_temp_m4a)
 
         return file_path_mp3
+
+
+    def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> str | None:
+        search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
+        print(str(search_results))
+        print('Select a song in the following list')
+        for i, item in enumerate(search_results):
+            video_artists=list(map(lambda artist: artist['name'], item['artists']))
+            print(f"{i + 1: 2d} {item['title']} - {", ".join(video_artists)}")
+        selection = '?'
+        while selection == '?':
+            selection = input('Enter the number of the song, empty for first one, or a to abort')
+            if selection == 'a':
+                return None
+            is_number = re.match('([0-9]+)', selection)
+            if is_number:
+                number = int(is_number.group(1))
+                if number >= len(search_results):
+                    print(f"{WARNING} wrong number {number}")
+                else:
+                    url = 'https://music.youtube.com/watch?v=' + search_results[number - 1]['videoId']
+                    return self.download(url, artists, album, track, title, year, image_url)
+
+            selection = '?'
+        return None
