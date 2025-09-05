@@ -44,6 +44,8 @@ exts_regex= '(\\.mp3|\\.m4a)'
 
 database = {}
 
+session_cache={}
+
 database_path = dir + '/.outify_database.json'
 if os.path.isfile(database_path):
     database_file = open(database_path, 'r')
@@ -150,6 +152,7 @@ if single_playlist:
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
+        print(f"Session cache size is {len(session_cache)}")
         if single_playlist:
             if playlist['name'] != single_playlist:
                 continue
@@ -181,6 +184,15 @@ while playlists:
                 possibilities = artists_combinations(artist_names)
                 print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
                 current_found = None
+                track_id = track['id']
+                from_cache = session_cache.get(track_id)
+                if from_cache:
+                    if from_cache == 'NOT_FOUND':
+                        continue
+                    current_found = from_cache
+                    current_playlist.add_song(current_found)
+                    continue
+
                 for artist in possibilities:
                     current_found = find_existing_song(dir, artist, album, track_number, title)
                     if current_found:
@@ -193,7 +205,7 @@ while playlists:
                                 break
 
                 if not current_found:
-                    existing_in_mapping = songs_to_files.get(track['id'], None)
+                    existing_in_mapping = songs_to_files.get(track_id, None)
                     if existing_in_mapping:
                         if os.path.exists(existing_in_mapping):
                             current_found = existing_in_mapping
@@ -216,13 +228,16 @@ while playlists:
                             current_playlist.add_waiting_song(current_found)
                             current_found = None
                         elif current_found:
-                            songs_to_files[track['id']] = current_found
+                            songs_to_files[track_id] = current_found
 
                     else:
                         print(f"{WARNING} Song not found {ENDC}")
 
                 if current_found:
                     current_playlist.add_song(current_found)
+                    session_cache[track_id] = current_found
+                else:
+                    session_cache[track_id] = 'NOT_FOUND'
 
 
             if playlist_tracks['next']:
