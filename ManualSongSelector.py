@@ -54,13 +54,13 @@ class ManualSongSelector:
                         return file_path
             elif choice == 'y' and self.can_yt:
                 url = input("Enter Youtube url\n")
-                file = self.yt_instance.download(url, artists, album, track, title, year, album_cover_url)
+                file = self.yt_instance.download(url, artists, album, track, title, year, album_cover_url, True)
                 if file:
                     return file
                 else:
                     print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
             elif self.can_yt and YT.is_youtube_url(choice):
-                file = self.yt_instance.download(choice, artists, album, track, title, year, album_cover_url)
+                file = self.yt_instance.download(choice, artists, album, track, title, year, album_cover_url, True)
                 if file:
                     return file
                 else:

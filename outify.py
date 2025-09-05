@@ -8,6 +8,7 @@ import re
 from spotipy.oauth2 import SpotifyOAuth
 
 from ManualSongSelector import ManualSongSelector
+from Playlist import Playlist
 from utils import *
 
 parser=argparse.ArgumentParser(description="Outify")
@@ -164,12 +165,8 @@ while playlists:
         # reset overrides
         overrides['skip_for_current_playlist'] = auto
 
-        playlist_file_name=playlist_prefix + playlist['name'].replace('/', '_') + '.m3u'
-        playlist_file=open(dir + '/' + playlist_file_name, 'w')
-        playlist_file.write('#EXTM3U\n')
-
+        current_playlist = Playlist(dir, playlist_prefix + playlist['name'].replace('/', '_') + '.m3u')
         playlist_tracks = sp.playlist_items(playlist['uri'])
-        found=0
         while playlist_tracks:
             total = playlist_tracks['total']
             offset = playlist_tracks['offset']
@@ -183,39 +180,25 @@ while playlists:
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
                 print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
-                current_found = False
+                current_found = None
                 for artist in possibilities:
-                    existing_file = find_existing_song(dir, artist, album, track_number, title)
-                    if existing_file:
-                        playlist_file.write(existing_file)
-                        playlist_file.write('\n')
-                        found = found + 1
-                        current_found = True
+                    current_found = find_existing_song(dir, artist, album, track_number, title)
+                    if current_found:
                         break
                     else:
                         ctitle = clean_title(title)
                         if ctitle != title:
-                            existing_file = find_existing_song(dir, artist, album, track_number, ctitle)
-                            if existing_file:
-                                playlist_file.write(existing_file)
-                                playlist_file.write('\n')
-                                found = found + 1
-                                current_found = True
+                            current_found = find_existing_song(dir, artist, album, track_number, ctitle)
+                            if current_found:
                                 break
 
                 if not current_found:
                     existing_in_mapping = songs_to_files.get(track['id'], None)
                     if existing_in_mapping:
                         if os.path.exists(existing_in_mapping):
-                            playlist_file.write(existing_in_mapping)
-                            playlist_file.write('\n')
-                            found = found + 1
-                            current_found = True
+                            current_found = existing_in_mapping
                         elif os.path.exists(dir + '/' + existing_in_mapping):
-                            playlist_file.write(existing_in_mapping)
-                            playlist_file.write('\n')
-                            found = found + 1
-                            current_found = True
+                            current_found = existing_in_mapping
 
                 skip_for_current_playlist = overrides['skip_for_current_playlist']
 
@@ -223,32 +206,32 @@ while playlists:
                     if not skip_for_current_playlist:
                         year = track['album']['release_date']
                         album_cover_url = track['album']['images'][0]['url']
-                        manual_value = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
-                        if manual_value == 'BEFORE_EXIT':
+                        current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
+                        if current_found == 'BEFORE_EXIT':
                             before_exit()
                             exit(0)
-                        elif manual_value == 'SKIP_FOR_CURRENT_PLAYLIST':
+                        elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':
                             overrides['skip_for_current_playlist'] = True
-                        elif manual_value:
-                            playlist_file.write(manual_value)
-                            found = found + 1
-                            songs_to_files[track['id']] = manual_value
-                            playlist_file.write('\n')
+                        elif callable(current_found):
+                            current_playlist.add_waiting_song(current_found)
+                            current_found = None
+                        elif current_found:
+                            songs_to_files[track['id']] = current_found
+
                     else:
                         print(f"{WARNING} Song not found {ENDC}")
+
+                if current_found:
+                    current_playlist.add_song(current_found)
 
 
             if playlist_tracks['next']:
                 playlist_tracks = sp.next(playlist_tracks)
             else:
+                current_playlist.write_to_disk()
                 playlist_tracks = None
 
-        playlist_file.close()
-        if found == 0:
-            print('\rNo tracks found, delete playlist')
-            os.remove(dir + '/' + playlist_file_name)
-        else:
-            print(f"\rFound {found} tracks")
+
 
 
     if playlists['next']:

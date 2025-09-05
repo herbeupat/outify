@@ -1,6 +1,8 @@
 import os
 import shutil
 import subprocess
+from typing import Callable
+
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, PictureType
 import urllib.request
@@ -33,19 +35,21 @@ class YT:
         return url.startswith('https://music.youtube.com/watch?v=') or url.startswith("https://www.youtube.com/watch?")
 
 
-    def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> str | None:
+    def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
         if not os.path.exists(artist_dir):
             os.mkdir(artist_dir)
         elif os.path.isfile(artist_dir):
-            print(f"{WARNING}File with artist name {artist_dir} exists, cannot create directory{ENDC}")
+            if output:
+                print(f"{WARNING}File with artist name {artist_dir} exists, cannot create directory{ENDC}")
             return None
         album_dir = artist_dir + os.sep + sanitize_file_name(album)
         if not os.path.exists(album_dir):
             os.mkdir(album_dir)
         elif os.path.isfile(album_dir):
-            print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
+            if output:
+                print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
             return None
         file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3'
         if os.path.isfile(file_path_mp3):
@@ -54,12 +58,15 @@ class YT:
         file_path_temp_m4a = "/tmp/outify.m4a"
         file_path_temp_mp3 = '/tmp/outify.mp3'
 
-        print('Downloading file')
+        if output:
+            print('Downloading file')
         subprocess.run(["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet", url]        )
-        print('Converting file')
+        if output:
+            print('Converting file')
         subprocess.run(["ffmpeg", "-i", file_path_temp_m4a, "-c:a", "libmp3lame", "-b:a", "192k", "-hide_banner", "-loglevel", "warning", file_path_temp_mp3])
 
-        print('Tagging file')
+        if output:
+            print('Tagging file')
         tag_file = EasyID3(file_path_temp_mp3)
         tag_file["albumartist"] = artists[0]
         tag_file["artist"] = ", ".join(artists)
@@ -70,7 +77,8 @@ class YT:
         tag_file.save()
 
         if image_url:
-            print('Tagging album cover')
+            if output:
+                print('Tagging album cover')
             cover_temp_file = "/tmp/outify_cover.jpg"
             urllib.request.urlretrieve(image_url, cover_temp_file)
             raw_image = open(cover_temp_file, 'rb').read()
@@ -90,7 +98,7 @@ class YT:
         return file_path_mp3
 
 
-    def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> str | None:
+    def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> Callable[[], None] | None:
         search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
         options = []
         if len(search_results) == 0:
@@ -108,5 +116,7 @@ class YT:
             return None
 
         url = 'https://music.youtube.com/watch?v=' + search_results[selected - 1]['videoId']
-        return self.download(url, artists, album, track, title, year, image_url)
+        def return_function():
+            self.download(url, artists, album, track, title, year, image_url, False)
+        return return_function
 
