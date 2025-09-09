@@ -5,6 +5,7 @@ from simple_term_menu import TerminalMenu
 
 from YT import YT
 from utils import WARNING, ENDC
+import os
 
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
@@ -27,8 +28,9 @@ class ManualSongSelector:
         self.last_index = 0
 
     def get_manual_song(self, title, album, artists, track, year, album_cover_url):
+        song = f"{', '.join(artists)} - {title} - {album} ({year}) "
         while True:
-            terminal_menu = TerminalMenu(self.menu_options, title=f"Song {artists} - {title} not found, what do you want to do ? ", cursor_index=self.last_index)
+            terminal_menu = TerminalMenu(self.menu_options, title=f"Song {song} not found, what do you want to do ? ", cursor_index=self.last_index)
             selected = terminal_menu.show()
             self.last_index = selected
             choice = self.menu_options[selected][1:2]
@@ -45,14 +47,12 @@ class ManualSongSelector:
             elif choice == 'd':
                 root = tk.Tk()
                 root.withdraw()
-
+                print(f"Choose a file for {song}")
                 file_path = filedialog.askopenfilename(initialdir=self.dir, filetypes=dialog_file_types)
                 if file_path:
-                    if file_path.startswith(self.dir + '/'):
-                        return file_path[len(self.dir) + 1:]
-                    else:
-                        return file_path
+                    return file_path
             elif choice == 'y' and self.can_yt:
+                os.system('reset') # required because conflict with the menu
                 url = input("Enter Youtube url\n")
                 file = self.yt_instance.download(url, artists, album, track, title, year, album_cover_url, True)
                 if file:

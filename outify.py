@@ -152,7 +152,6 @@ if single_playlist:
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
-        print(f"Session cache size is {len(session_cache)}")
         if single_playlist:
             if playlist['name'] != single_playlist:
                 continue
@@ -220,6 +219,7 @@ while playlists:
                         album_cover_url = track['album']['images'][0]['url']
                         current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
                         if current_found == 'BEFORE_EXIT':
+                            current_playlist.write_to_disk()
                             before_exit()
                             exit(0)
                         elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':

@@ -107,10 +107,10 @@ class YT:
         for i, item in enumerate(search_results):
             video_artists=list(map(lambda artist: artist['name'], item['artists']))
             print()
-            option = f"{i + 1: 2d} {item['title']} - {", ".join(video_artists)}"
+            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)}"
             options.append(option)
         options.append("[a] abort")
-        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {", ".join(artists)}")
+        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {', '.join(artists)}")
         selected = terminal_menu.show()
         if selected == len(options) - 1:
             return None
