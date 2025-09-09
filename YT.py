@@ -106,16 +106,17 @@ class YT:
             return None
         for i, item in enumerate(search_results):
             video_artists=list(map(lambda artist: artist['name'], item['artists']))
-            print()
-            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)}"
+            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)} {item['videoId']}"
             options.append(option)
         options.append("[a] abort")
         terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {', '.join(artists)}")
         selected = terminal_menu.show()
+        print(selected)
         if selected == len(options) - 1:
             return None
 
-        url = 'https://music.youtube.com/watch?v=' + search_results[selected - 1]['videoId']
+        url = 'https://music.youtube.com/watch?v=' + search_results[selected]['videoId']
+        print(url)
         def return_function():
             self.download(url, artists, album, track, title, year, image_url, False)
         return return_function
