@@ -105,13 +105,12 @@ class YT:
             print(f"{WARNING} No result {ENDC}")
             return None
         for i, item in enumerate(search_results):
-            video_artists=list(map(lambda artist: artist['name'], item['artists']))
-            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)} {item['videoId']}"
+            video_artists=list(map(lambda artist: artist['name'], item['artists'] if 'artists' in item else []))
+            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)}"
             options.append(option)
         options.append("[a] abort")
         terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {', '.join(artists)}")
         selected = terminal_menu.show()
-        print(selected)
         if selected == len(options) - 1:
             return None
 

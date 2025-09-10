@@ -37,7 +37,6 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
 self_id=sp.current_user()['id']
 logging.debug(f"self profile id is {self_id}")
 
-exts = ['.mp3', '.m4a']
 
 suffixes_regex='( - | \\().*(remaster|radio edit|original mix|version).*\\)?'
 exts_regex= '(\\.mp3|\\.m4a)'
@@ -64,31 +63,31 @@ def before_exit():
     json.dump(database, database_file)
 
 
-def find_existing_song(dir, artist, album, track, title):
+def find_existing_song(dir: str, artist: str, album: str, track, title: str) -> str | None:
     for ext in exts:
         ext_path=find_existing_song_ext(dir, artist, album, track, title, ext)
         if ext_path:
             return ext_path
     artist_dir_exists = os.path.isdir(dir + '/' + artist)
     if artist_dir_exists:
-        recursive_track = find_recursive_track(dir + '/' + artist, track, title)
+        recursive_track = find_recursive_track(dir + '/' + artist, title)
         if recursive_track:
             return recursive_track[len(dir)+1:]
     return None
 
 
-def clean_title(title):
+def clean_title(title: str) -> str:
     suffix=re.search(suffixes_regex, title, re.IGNORECASE)
     if suffix:
         return re.sub(suffixes_regex, '', title, flags=re.IGNORECASE)
     return title
 
-def find_recursive_track(dir, track, title):
+def find_recursive_track(dir: str, title: str) -> str | None:
     dir_content = os.listdir(dir)
     for file in dir_content:
         sub_dir = dir + '/' + file
         if os.path.isdir(sub_dir):
-            recursive_dir_found = find_recursive_track(sub_dir, track, title)
+            recursive_dir_found = find_recursive_track(sub_dir, title)
             if recursive_dir_found:
                 return recursive_dir_found
         else:
