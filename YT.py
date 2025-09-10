@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import time
 from typing import Callable
 
 from mutagen.easyid3 import EasyID3
@@ -19,6 +20,12 @@ class YT:
         self.base_dir = base_dir
         self.ytmusic = YTMusic()
         self.search_limit = search_limit
+        self.batch_output = False # not working, have to investigate that
+
+
+    def set_batch_output(self, value: bool):
+        self.batch_output = value
+
 
     def can_run_basic(self) -> bool:
         has_yt_dlp = shutil.which('yt-dlp') is not None
@@ -35,37 +42,48 @@ class YT:
         return url.startswith('https://music.youtube.com/watch?v=') or url.startswith("https://www.youtube.com/watch?")
 
 
+    def try_download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
+        try:
+            return self.download(url, artists, album, track, title, year, image_url, output)
+        except Exception as e:
+            print(f"{WARNING} Error while downloading video {url}: {e}")
+            return None
+
+
     def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
+        effective_output = output or self.batch_output
         if not os.path.exists(artist_dir):
             os.mkdir(artist_dir)
         elif os.path.isfile(artist_dir):
-            if output:
+            if effective_output:
                 print(f"{WARNING}File with artist name {artist_dir} exists, cannot create directory{ENDC}")
             return None
         album_dir = artist_dir + os.sep + sanitize_file_name(album)
         if not os.path.exists(album_dir):
             os.mkdir(album_dir)
         elif os.path.isfile(album_dir):
-            if output:
+            if effective_output:
                 print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
             return None
         file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3'
         if os.path.isfile(file_path_mp3):
             return file_path_mp3
 
-        file_path_temp_m4a = "/tmp/outify.m4a"
-        file_path_temp_mp3 = '/tmp/outify.mp3'
+        ts = time.time()
 
-        if output:
-            print('Downloading file')
+        file_path_temp_m4a = f"/tmp/outify.{ts}.m4a"
+        file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
+
+        if effective_output:
+            print(f"Downloading file for {track}")
         subprocess.run(["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet", url]        )
-        if output:
+        if effective_output:
             print('Converting file')
         subprocess.run(["ffmpeg", "-i", file_path_temp_m4a, "-c:a", "libmp3lame", "-b:a", "192k", "-hide_banner", "-loglevel", "warning", file_path_temp_mp3])
 
-        if output:
+        if effective_output:
             print('Tagging file')
         tag_file = EasyID3(file_path_temp_mp3)
         tag_file["albumartist"] = artists[0]
@@ -77,9 +95,9 @@ class YT:
         tag_file.save()
 
         if image_url:
-            if output:
+            if effective_output:
                 print('Tagging album cover')
-            cover_temp_file = "/tmp/outify_cover.jpg"
+            cover_temp_file = f"/tmp/outify_cover{ts}.jpg"
             urllib.request.urlretrieve(image_url, cover_temp_file)
             raw_image = open(cover_temp_file, 'rb').read()
             tag_file = ID3(file_path_temp_mp3)
@@ -117,9 +135,7 @@ class YT:
         url = 'https://music.youtube.com/watch?v=' + search_results[selected]['videoId']
 
         def return_function():
-            try:
-                self.download(url, artists, album, track, title, year, image_url, False)
-            except Exception as e:
-                print(f"{WARNING} Error while downloading video {url}: {e}")
+            self.try_download(url, artists, album, track, title, year, image_url, False)
+
         return return_function
 

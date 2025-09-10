@@ -64,13 +64,7 @@ class ManualSongSelector:
             elif choice == 'y' and self.can_yt:
                 os.system('reset') # required because conflict with the menu
                 url = input("Enter Youtube url\n")
-                file = self.yt_instance.download(url, artists, album, track, title, year, album_cover_url, True)
-                if file:
-                    return file
-                else:
-                    print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
-            elif self.can_yt and YT.is_youtube_url(choice):
-                file = self.yt_instance.download(choice, artists, album, track, title, year, album_cover_url, True)
+                file = self.yt_instance.try_download(url, artists, album, track, title, year, album_cover_url, True)
                 if file:
                     return file
                 else:
@@ -105,7 +99,7 @@ class ManualSongSelector:
 
         terminal_menu = TerminalMenu(possibilities, title=f"Select a file for {song}:")
         selected = terminal_menu.show()
-        if not selected:
+        if selected is None:
             return None
         return self.menu_options[selected]
 
@@ -119,3 +113,6 @@ class ManualSongSelector:
             elif os.path.isdir(sub_path):
                 accumulator = accumulator + self.get_files_inside(sub_path)
         return accumulator
+
+    def set_batch_output(self, value: bool):
+        self.yt_instance.set_batch_output(value)

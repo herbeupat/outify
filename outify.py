@@ -165,8 +165,9 @@ while playlists:
 
         # reset overrides
         overrides['skip_for_current_playlist'] = auto
+        manual_song.set_batch_output(False)
 
-        current_playlist = Playlist(dir, playlist_prefix + playlist['name'].replace('/', '_') + '.m3u')
+        current_playlist = Playlist(dir, playlist_prefix + sanitize_file_name(playlist['name']) + '.m3u')
         playlist_tracks = sp.playlist_items(playlist['uri'])
         while playlist_tracks:
             total = playlist_tracks['total']
@@ -242,6 +243,7 @@ while playlists:
             if playlist_tracks['next']:
                 playlist_tracks = sp.next(playlist_tracks)
             else:
+                manual_song.set_batch_output(True)
                 current_playlist.write_to_disk()
                 playlist_tracks = None
 
