@@ -111,12 +111,15 @@ class YT:
         options.append("[a] abort")
         terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {title} - {', '.join(artists)}")
         selected = terminal_menu.show()
-        if not selected or selected == len(options) - 1:
+        if selected is None or (selected == len(options) - 1):
             return None
 
         url = 'https://music.youtube.com/watch?v=' + search_results[selected]['videoId']
 
         def return_function():
-            self.download(url, artists, album, track, title, year, image_url, False)
+            try:
+                self.download(url, artists, album, track, title, year, image_url, False)
+            except Exception as e:
+                print(f"{WARNING} Error while downloading video {url}: {e}")
         return return_function
 

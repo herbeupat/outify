@@ -40,11 +40,16 @@ class ManualSongSelector:
                 print('Skipped')
                 return None
             elif choice == 'm':
-                path = input("Enter file path\n")
-                if path.startswith(self.dir + '/'):
-                    return path[len(self.dir) + 1:]
+                os.system('reset') # required because conflict with the menu
+                path = input(f"Enter file path for {song}\n")
+                if os.path.exists(path):
+                    if path.startswith(self.dir + '/'):
+                        return path[len(self.dir) + 1:]
+                    else:
+                        return path
                 else:
-                    return path
+                    print(f"{WARNING} invalid path {path} {ENDC}")
+                    continue
             elif choice == 'd':
                 root = tk.Tk()
                 root.withdraw()
