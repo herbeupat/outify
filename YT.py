@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import subprocess
@@ -16,11 +17,13 @@ from utils import *
 
 class YT:
 
-    def __init__(self, base_dir, search_limit):
+    def __init__(self, base_dir, search_limit, force_sync_download: bool):
         self.base_dir = base_dir
         self.ytmusic = YTMusic()
         self.search_limit = search_limit
         self.batch_output = False # not working, have to investigate that
+        self.force_sync_download = force_sync_download
+        self.logger = logging.getLogger(__name__)
 
 
     def set_batch_output(self, value: bool):
@@ -51,6 +54,7 @@ class YT:
 
 
     def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
+        self.logger.debug(f"Start download {url}")
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
         effective_output = output or self.batch_output
@@ -77,11 +81,22 @@ class YT:
         file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
 
         if effective_output:
-            print(f"Downloading file for {track}")
-        subprocess.run(["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet", url]        )
+            print(f"Downloading file for {title}")
+        yt_dlp_result = subprocess.run(["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet", url])
+        if yt_dlp_result.returncode != 0:
+            self.logger.debug(yt_dlp_result.stderr)
+            if effective_output:
+                print(f"{WARNING} error while downloading {title}")
+            return None
         if effective_output:
             print('Converting file')
-        subprocess.run(["ffmpeg", "-i", file_path_temp_m4a, "-c:a", "libmp3lame", "-b:a", "192k", "-hide_banner", "-loglevel", "warning", file_path_temp_mp3])
+        ffmpeg_result = subprocess.run(["ffmpeg", "-i", file_path_temp_m4a, "-c:a", "libmp3lame", "-b:a", "192k", "-hide_banner", "-loglevel", "warning", file_path_temp_mp3])
+        if ffmpeg_result.returncode != 0:
+            self.logger.debug(ffmpeg_result.stderr)
+            if effective_output:
+                print(f"{WARNING} error while converting {title}")
+            return None
+
 
         if effective_output:
             print('Tagging file')
@@ -134,8 +149,12 @@ class YT:
 
         url = 'https://music.youtube.com/watch?v=' + search_results[selected]['videoId']
 
-        def return_function():
-            self.try_download(url, artists, album, track, title, year, image_url, False)
-
-        return return_function
+        if self.force_sync_download:
+            self.logger.debug(f"Force sync download of {url}")
+            return self.try_download(url, artists, album, track, title, year, image_url, True)
+        else:
+            self.logger.debug(f"Async download of {url}")
+            def return_function():
+                self.try_download(url, artists, album, track, title, year, image_url, False)
+            return return_function
 

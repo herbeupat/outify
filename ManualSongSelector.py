@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 from tkinter import filedialog
 
@@ -10,10 +11,11 @@ import os
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
 class ManualSongSelector:
-    def __init__(self, dir: str, search_limit: int):
+    def __init__(self, dir: str, search_limit: int, force_sync_download: bool):
         self.dir = dir
-        self.yt_instance = YT(dir, search_limit)
+        self.yt_instance = YT(dir, search_limit, force_sync_download)
         self.can_yt = self.yt_instance.can_run_basic()
+        self.logger = logging.getLogger(__name__)
         options = [
             "[m] enter manual path",
             "[d] open file dialog",
@@ -30,9 +32,13 @@ class ManualSongSelector:
 
     def get_manual_song(self, title, album, artists, track, year, album_cover_url):
         song = f"{', '.join(artists)} - {title} (From album: {album} year: ({year}))"
+        print("")
         while True:
             terminal_menu = TerminalMenu(self.menu_options, title=f"Song {song} not found, what do you want to do ? ", cursor_index=self.last_index)
             selected = terminal_menu.show()
+            if selected is None:
+                os.system("reset")
+                continue
             self.last_index = selected
             choice = self.menu_options[selected][1:2]
 
@@ -101,7 +107,7 @@ class ManualSongSelector:
         selected = terminal_menu.show()
         if selected is None:
             return None
-        return self.menu_options[selected]
+        return possibilities[selected]
 
     def get_files_inside(self, dir: str) -> list[str]:
         accumulator = []

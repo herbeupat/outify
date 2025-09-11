@@ -17,6 +17,8 @@ parser.add_argument("--playlist", help='Only import this playlist')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
 parser.add_argument("--only-self", action='store_true')
+parser.add_argument("--force-sync-download", action='store_true')
+parser.add_argument("--debug", action='store_true')
 parser.add_argument("--search-limit", type=int, default=10)
 args=parser.parse_args()
 
@@ -24,6 +26,14 @@ dir = args.dir
 playlist_prefix = args.playlist_prefix
 auto = args.auto
 single_playlist = args.playlist
+force_sync_download = args.force_sync_download
+debug = args.debug
+
+logger = logging.getLogger(__name__)
+level = logging.DEBUG if args.debug else logging.INFO
+logging.basicConfig(filename='outify.log', level=level)
+
+
 only_self = args.only_self
 overrides = {
     'skip_for_current_playlist': auto
@@ -35,10 +45,10 @@ scope = "user-library-read,playlist-read-private"
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
 
 self_id=sp.current_user()['id']
-logging.debug(f"self profile id is {self_id}")
 
+logger.debug(f"self profile id is {self_id}")
 
-suffixes_regex='( - | \\().*(remaster|radio edit|original mix|version).*\\)?'
+suffixes_regex='( - | \\(| \\[).*(remaster|radio edit|original mix|version).*\\)?\\]?'
 exts_regex= '(\\.mp3|\\.m4a)'
 
 database = {}
@@ -56,7 +66,7 @@ else:
     songs_to_files = {}
     database['songs_to_files'] = songs_to_files
 
-manual_song = ManualSongSelector(dir, search_limit)
+manual_song = ManualSongSelector(dir, search_limit, force_sync_download)
 
 def before_exit():
     database_file = open(database_path, 'w')
@@ -218,6 +228,7 @@ while playlists:
                         year = track['album']['release_date']
                         album_cover_url = track['album']['images'][0]['url']
                         current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
+                        logger.debug(f"Current found value is {current_found}")
                         if current_found == 'BEFORE_EXIT':
                             current_playlist.write_to_disk()
                             before_exit()
