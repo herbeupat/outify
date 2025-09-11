@@ -194,6 +194,8 @@ while playlists:
                 print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
                 current_found = None
                 track_id = track['id']
+                if track_id is None:
+                    track_id = track['uri'] # for Spotify local files
                 from_cache = session_cache.get(track_id)
                 if from_cache:
                     if from_cache == 'NOT_FOUND':
