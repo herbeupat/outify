@@ -45,7 +45,7 @@ class YT:
         return url.startswith('https://music.youtube.com/watch?v=') or url.startswith("https://www.youtube.com/watch?")
 
 
-    def try_download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
+    def try_download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None, output:bool) -> str | None:
         try:
             return self.download(url, artists, album, track, title, year, image_url, output)
         except Exception as e:
@@ -53,7 +53,7 @@ class YT:
             return None
 
 
-    def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None, output:bool) -> str | None:
+    def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None, output:bool) -> str | None:
         self.logger.debug(f"Start download {url}")
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
@@ -105,7 +105,8 @@ class YT:
         tag_file["artist"] = ", ".join(artists)
         tag_file["album"] = album
         tag_file["title"] = title
-        tag_file["date"] = year
+        if year:
+            tag_file["date"] = year
         tag_file["tracknumber"] = str(track)
         tag_file.save()
 
@@ -131,7 +132,7 @@ class YT:
         return file_path_mp3
 
 
-    def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str, image_url: str | None) -> Callable[[], None] | None:
+    def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None) -> Callable[[], None] | None:
         search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
         options = []
         if len(search_results) == 0:

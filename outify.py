@@ -226,7 +226,7 @@ while playlists:
                 if not current_found:
                     if not skip_for_current_playlist:
                         year = track['album']['release_date']
-                        album_cover_url = track['album']['images'][0]['url']
+                        album_cover_url = track['album']['images'][0]['url'] if track['album']['images'] else None
                         current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
                         logger.debug(f"Current found value is {current_found}")
                         if current_found == 'BEFORE_EXIT':

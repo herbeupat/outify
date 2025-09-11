@@ -30,7 +30,7 @@ class ManualSongSelector:
         self.menu_options = options
         self.last_index = 0
 
-    def get_manual_song(self, title, album, artists, track, year, album_cover_url):
+    def get_manual_song(self, title, album, artists, track, year: str | None, album_cover_url: str | None):
         song = f"{', '.join(artists)} - {title} (From album: {album} year: ({year}))"
         print("")
         while True:
