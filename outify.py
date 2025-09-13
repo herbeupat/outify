@@ -232,6 +232,7 @@ while playlists:
                         current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
                         logger.debug(f"Current found value is {current_found}")
                         if current_found == 'BEFORE_EXIT':
+                            manual_song.set_batch_output(True)
                             current_playlist.write_to_disk()
                             before_exit()
                             exit(0)
