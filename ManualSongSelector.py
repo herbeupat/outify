@@ -1,12 +1,17 @@
 import logging
-import tkinter as tk
-from tkinter import filedialog
 
 from simple_term_menu import TerminalMenu
 
 from YT import YT
 from utils import WARNING, ENDC, exts
 import os
+
+has_gui = True
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except ImportError:
+    has_gui = False
 
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
@@ -18,15 +23,17 @@ class ManualSongSelector:
         self.logger = logging.getLogger(__name__)
         options = [
             "[m] enter manual path",
-            "[d] open file dialog",
             "[l] list all files in directories named with the artist(s)",
             "[q] stop for now and quit",
             "[s] skip song",
             "[t] skip all missing songs in this playlist",
         ]
+        if has_gui:
+            options.append("[d] open file dialog")
         if self.can_yt:
             options.append("[y] from Youtube URL (you may also directly paste Youtube URL)")
             options.append("[z] search from Youtube music")
+        options.sort()
         self.menu_options = options
         self.last_index = 0
 
