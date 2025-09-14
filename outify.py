@@ -256,7 +256,7 @@ while playlists:
                             current_playlist.add_waiting_song(current_found)
                             current_found = None
                         elif current_found:
-                            songs_to_files[track_id] = current_found
+                            songs_to_files[track_id] = current_playlist.format_file_name(current_found)
 
                     else:
                         print(f"{WARNING} Song not found {ENDC}")
