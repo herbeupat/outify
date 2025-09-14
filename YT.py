@@ -100,6 +100,17 @@ class YT:
 
         if effective_output:
             print('Tagging file')
+        self.do_tag_file(album, artists, effective_output, file_path_temp_mp3, image_url, title, track, ts, year)
+
+        shutil.move(file_path_temp_mp3, file_path_mp3)
+
+        os.remove(file_path_temp_m4a)
+
+        return file_path_mp3
+
+    def do_tag_file(self, album: str, artists: list[str], effective_output: bool, file_path_temp_mp3: str,
+                    image_url: str | None, title: str, track: int, ts: float, year: str | None):
+
         tag_file = EasyID3(file_path_temp_mp3)
         tag_file["albumartist"] = artists[0]
         tag_file["artist"] = ", ".join(artists)
@@ -120,17 +131,10 @@ class YT:
             tag_file.add(APIC(
                 mime='image/jpg',
                 type=PictureType.COVER_FRONT,
-                data = raw_image
+                data=raw_image
             ))
             tag_file.save()
             os.remove(cover_temp_file)
-
-        shutil.move(file_path_temp_mp3, file_path_mp3)
-
-        os.remove(file_path_temp_m4a)
-
-        return file_path_mp3
-
 
     def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None) -> Callable[[], None] | None:
         search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
@@ -159,3 +163,66 @@ class YT:
                 self.try_download(url, artists, album, track, title, year, image_url, False)
             return return_function
 
+
+    def search_yt_album(self, artist: str, album: str, tracks: list[str], year: str | None, image_url: str | None, output: bool):
+        search_results = self.ytmusic.search(artist + " " + album, filter='albums', limit=self.search_limit)
+
+        options = []
+        if len(search_results) == 0:
+            print(f"{WARNING} No result {ENDC}")
+            return None
+        for i, item in enumerate(search_results):
+            option = item['title']
+            options.append(option)
+
+        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {artist} {album}")
+        selected = terminal_menu.show()
+        if selected is None:
+            return None
+
+        print(str(search_results[selected]))
+
+        url = 'https://music.youtube.com/playlist?list=' + search_results[selected]['playlistId']
+
+        artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
+        effective_output = output or self.batch_output
+
+        if not os.path.exists(artist_dir):
+            os.mkdir(artist_dir)
+        elif os.path.isfile(artist_dir):
+            if effective_output:
+                print(f"{WARNING}File with artist name {artist_dir} exists, cannot create directory{ENDC}")
+            return None
+
+        album_dir = artist_dir + os.sep + sanitize_file_name(album)
+        if not os.path.exists(album_dir):
+            os.mkdir(album_dir)
+        elif os.path.isfile(album_dir):
+            if effective_output:
+                print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
+            return None
+
+        ts = time.time()
+        tmp_dir = f"/tmp/{ts}"
+        os.mkdir(tmp_dir)
+        file_format = tmp_dir + os.sep + "%(playlist_index)s %(title)s.%(ext)s" #D:\my_folder_location\%(upload_date)s\%(title)s [%(id)s].%(ext)s"
+        subprocess.run(["yt-dlp", "-f", "140", "-o", file_format, url])
+
+        for file in os.listdir(tmp_dir):
+            file_path_temp_m4a = tmp_dir + os.sep + file
+            file_path_temp_mp3 = tmp_dir + os.sep + file.replace(".m4a", ".mp3")
+            subprocess.run(
+                ["ffmpeg", "-i", file_path_temp_m4a, "-c:a", "libmp3lame", "-b:a", "192k", "-hide_banner", "-loglevel",
+                 "warning", file_path_temp_mp3])
+            os.remove(file_path_temp_m4a)
+
+        for file in os.listdir(tmp_dir):
+            track_index = int(file[0:file.index(" ")]) - 1
+            print(track_index)
+            file_path_temp_mp3 = tmp_dir + os.sep + file
+            self.do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, tracks[track_index], track_index + 1, ts, year)
+
+            file_path_mp3 = album_dir + os.sep + file
+            shutil.move(file_path_temp_mp3, file_path_mp3)
+
+        return url
