@@ -54,6 +54,7 @@ exts_regex= '(\\.mp3|\\.m4a)'
 database = {}
 
 session_cache={}
+exclude_cache=[]
 
 database_path = dir + '/.outify_database.json'
 if os.path.isfile(database_path):
@@ -65,6 +66,12 @@ if 'songs_to_files' in database:
 else:
     songs_to_files = {}
     database['songs_to_files'] = songs_to_files
+
+if 'exclude_cache' in database:
+    exclude_cache = database['exclude_cache']
+else:
+    exclude_cache = []
+    database['exclude_cache'] = exclude_cache
 
 manual_song = ManualSongSelector(dir, search_limit, force_sync_download)
 
@@ -186,6 +193,14 @@ while playlists:
                 track = track_item['track']
                 if not track:
                     continue
+
+                track_id = track['id']
+                if track_id is None:
+                    track_id = track['uri'] # for Spotify local files
+                if track_id in exclude_cache:
+                    print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
+                    continue
+                
                 album= track['album']['name']
                 title= track['name']
                 track_number= track['track_number']
@@ -193,9 +208,6 @@ while playlists:
                 possibilities = artists_combinations(artist_names)
                 print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
                 current_found = None
-                track_id = track['id']
-                if track_id is None:
-                    track_id = track['uri'] # for Spotify local files
                 from_cache = session_cache.get(track_id)
                 if from_cache:
                     if from_cache == 'NOT_FOUND':
@@ -238,6 +250,8 @@ while playlists:
                             exit(0)
                         elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':
                             overrides['skip_for_current_playlist'] = True
+                        elif current_found == 'EXCLUDE_TRACK':
+                            exclude_cache.append(track_id) 
                         elif callable(current_found):
                             current_playlist.add_waiting_song(current_found)
                             current_found = None

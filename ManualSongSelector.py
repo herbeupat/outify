@@ -27,6 +27,7 @@ class ManualSongSelector:
             "[q] stop for now and quit",
             "[s] skip song",
             "[t] skip all missing songs in this playlist",
+            "[x] exclude this track from future analyses"
         ]
         if has_gui:
             options.append("[d] open file dialog")
@@ -90,6 +91,8 @@ class ManualSongSelector:
                 return 'BEFORE_EXIT'
             elif choice == 't':
                 return 'SKIP_FOR_CURRENT_PLAYLIST'
+            elif choice == 'x':
+                return 'EXCLUDE_TRACK'
             else:
                 print(f"Wrong choice {choice}")
 
