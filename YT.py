@@ -180,8 +180,6 @@ class YT:
         if selected is None:
             return None
 
-        print(str(search_results[selected]))
-
         url = 'https://music.youtube.com/playlist?list=' + search_results[selected]['playlistId']
 
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
@@ -209,6 +207,7 @@ class YT:
         subprocess.run(["yt-dlp", "-f", "140", "-o", file_format, url])
 
         for file in os.listdir(tmp_dir):
+            print(f"Convert {file}")
             file_path_temp_m4a = tmp_dir + os.sep + file
             file_path_temp_mp3 = tmp_dir + os.sep + file.replace(".m4a", ".mp3")
             subprocess.run(
@@ -217,8 +216,8 @@ class YT:
             os.remove(file_path_temp_m4a)
 
         for file in os.listdir(tmp_dir):
+            print(f"Tag {file}")
             track_index = int(file[0:file.index(" ")]) - 1
-            print(track_index)
             file_path_temp_mp3 = tmp_dir + os.sep + file
             self.do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, tracks[track_index], track_index + 1, ts, year)
 
