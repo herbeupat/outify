@@ -10,6 +10,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from ManualSongSelector import ManualSongSelector
 from Playlist import Playlist
 from utils import *
+from unidecode import unidecode
 
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
@@ -20,6 +21,8 @@ parser.add_argument("--only-self", action='store_true')
 parser.add_argument("--force-sync-download", action='store_true')
 parser.add_argument("--debug", action='store_true')
 parser.add_argument("--search-limit", type=int, default=10)
+parser.add_argument("--add-alternative-spelling", action='append')
+parser.add_argument("--ignore-exclusions", action='store_true')
 args=parser.parse_args()
 
 dir = args.dir
@@ -28,6 +31,7 @@ auto = args.auto
 single_playlist = args.playlist
 force_sync_download = args.force_sync_download
 debug = args.debug
+ignore_exclusions = args.ignore_exclusions
 
 logger = logging.getLogger(__name__)
 level = logging.DEBUG if args.debug else logging.INFO
@@ -55,6 +59,7 @@ database = {}
 
 session_cache={}
 exclude_cache=[]
+alternative_spellings={}
 
 database_path = dir + '/.outify_database.json'
 if os.path.isfile(database_path):
@@ -73,23 +78,50 @@ else:
     exclude_cache = []
     database['exclude_cache'] = exclude_cache
 
-manual_song = ManualSongSelector(dir, search_limit, force_sync_download)
+if 'alternative_spellings' in database:
+    alternative_spellings = database['alternative_spellings']
+else:
+    database['alternative_spellings'] = alternative_spellings
 
-def before_exit():
+
+def save_database():
     database_file = open(database_path, 'w')
     json.dump(database, database_file)
 
+add_alternative_spelling = args.add_alternative_spelling
+if add_alternative_spelling and len(add_alternative_spelling) > 0:
+    for alt in add_alternative_spelling:
+        split = alt.split('=')
+        if len(split) == 2:
+            alternative_spellings[split[0]] = split[1]
+    save_database()
 
-def find_existing_song(dir: str, artist: str, album: str, track, title: str) -> str | None:
+manual_song = ManualSongSelector(dir, search_limit, force_sync_download)
+
+
+
+def find_existing_song(dir: str, artist: str, album: str, track, title: str, try_alternatives: bool) -> str | None:
     for ext in exts:
         ext_path=find_existing_song_ext(dir, artist, album, track, title, ext)
         if ext_path:
             return ext_path
     artist_dir_exists = os.path.isdir(dir + '/' + artist)
     if artist_dir_exists:
+        print("artist dir exists")
         recursive_track = find_recursive_track(dir + '/' + artist, title)
         if recursive_track:
             return recursive_track[len(dir)+1:]
+    
+    without_accent = unidecode(artist)
+    if try_alternatives and without_accent != artist:
+        response_without_accent = find_existing_song(dir, without_accent, album, track, title, False)
+        if response_without_accent:
+            return response_without_accent
+
+    if try_alternatives and artist in alternative_spellings:
+        response_with_alternative_spelling = find_existing_song(dir, alternative_spellings[artist], album, track, title, False)
+        if response_with_alternative_spelling:
+            return response_with_alternative_spelling
     return None
 
 
@@ -193,16 +225,19 @@ while playlists:
                 track = track_item['track']
                 if not track:
                     continue
+                title= track['name']
 
                 track_id = track['id']
                 if track_id is None:
                     track_id = track['uri'] # for Spotify local files
                 if track_id in exclude_cache:
-                    print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
-                    continue
+                    if ignore_exclusions:
+                        print(f"\n{WARNING}Track {title} was excluded but exclusions ignored{ENDC}\n")
+                    else:
+                        print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
+                        continue
                 
                 album= track['album']['name']
-                title= track['name']
                 track_number= track['track_number']
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
@@ -217,13 +252,13 @@ while playlists:
                     continue
 
                 for artist in possibilities:
-                    current_found = find_existing_song(dir, artist, album, track_number, title)
+                    current_found = find_existing_song(dir, artist, album, track_number, title, True)
                     if current_found:
                         break
                     else:
                         ctitle = clean_title(title)
                         if ctitle != title:
-                            current_found = find_existing_song(dir, artist, album, track_number, ctitle)
+                            current_found = find_existing_song(dir, artist, album, track_number, ctitle, True)
                             if current_found:
                                 break
 
@@ -246,7 +281,7 @@ while playlists:
                         if current_found == 'BEFORE_EXIT':
                             manual_song.set_batch_output(True)
                             current_playlist.write_to_disk()
-                            before_exit()
+                            save_database()
                             exit(0)
                         elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':
                             overrides['skip_for_current_playlist'] = True
@@ -283,4 +318,4 @@ while playlists:
     else:
         playlists = None
 
-before_exit()
+save_database()
