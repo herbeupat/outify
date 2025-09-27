@@ -6,4 +6,4 @@ exts = ['.mp3', '.m4a']
 
 
 def sanitize_file_name(file_name: str):
-    return file_name.replace("/", "_").replace("\\", "_").strip()
+    return file_name.replace("/", "_").replace("\\", "_").replace(":", "_").strip()
