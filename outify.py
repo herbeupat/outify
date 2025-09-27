@@ -33,6 +33,7 @@ single_playlist = args.playlist
 force_sync_download = args.force_sync_download
 debug = args.debug
 ignore_exclusions = args.ignore_exclusions
+cookies_from_browser = args.cookies_from_browser
 
 logger = logging.getLogger(__name__)
 level = logging.DEBUG if args.debug else logging.INFO
@@ -98,7 +99,7 @@ if add_alternative_spelling and len(add_alternative_spelling) > 0:
             alternative_spellings[split[0]] = split[1]
     save_database()
 
-manual_song = ManualSongSelector(dir, search_limit, force_sync_download)
+manual_song = ManualSongSelector(dir, search_limit, force_sync_download, cookies_from_browser)
 
 
 
