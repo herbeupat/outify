@@ -165,6 +165,7 @@ class YT:
 
 
     def search_yt_album(self, artist: str, album: str, tracks: list[str], year: str | None, image_url: str | None, output: bool):
+        print(f"Will download {artist} - {album} - {len(tracks)} tracks - {year} - {image_url}")
         search_results = self.ytmusic.search(artist + " " + album, filter='albums', limit=self.search_limit)
 
         options = []
@@ -175,7 +176,7 @@ class YT:
             option = item['title']
             options.append(option)
 
-        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {artist} {album}")
+        terminal_menu = TerminalMenu(options, title=f"Choose an album to download {artist} - {album}")
         selected = terminal_menu.show()
         if selected is None:
             return None
@@ -203,7 +204,7 @@ class YT:
         ts = time.time()
         tmp_dir = f"/tmp/{ts}"
         os.mkdir(tmp_dir)
-        file_format = tmp_dir + os.sep + "%(playlist_index)s %(title)s.%(ext)s" #D:\my_folder_location\%(upload_date)s\%(title)s [%(id)s].%(ext)s"
+        file_format = tmp_dir + os.sep + "%(playlist_index)s %(title)s.%(ext)s"
         subprocess.run(["yt-dlp", "-f", "140", "-o", file_format, url])
 
         for file in os.listdir(tmp_dir):
@@ -219,7 +220,9 @@ class YT:
             print(f"Tag {file}")
             track_index = int(file[0:file.index(" ")]) - 1
             file_path_temp_mp3 = tmp_dir + os.sep + file
-            self.do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, tracks[track_index], track_index + 1, ts, year)
+            title = tracks[track_index] if len(tracks) > track_index else file[file.index(" ") + 1:]
+
+            self.do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, title, track_index + 1, ts, year)
 
             file_path_mp3 = album_dir + os.sep + file
             shutil.move(file_path_temp_mp3, file_path_mp3)
