@@ -107,7 +107,6 @@ def find_existing_song(dir: str, artist: str, album: str, track, title: str, try
             return ext_path
     artist_dir_exists = os.path.isdir(dir + '/' + artist)
     if artist_dir_exists:
-        print("artist dir exists")
         recursive_track = find_recursive_track(dir + '/' + artist, title)
         if recursive_track:
             return recursive_track[len(dir)+1:]
@@ -241,7 +240,8 @@ while playlists:
                 track_number= track['track_number']
                 artist_names= list(map(lambda artist: artist['name'], track['artists']))
                 possibilities = artists_combinations(artist_names)
-                print(f"\rSearching for {offset + i + 1}/{total} {possibilities[0]} - {title}", end='')
+                line = f"Searching for {offset + i + 1}/{total} {possibilities[0]} - {title}"
+                print(f"\r{line:125} ", end='')
                 current_found = None
                 from_cache = session_cache.get(track_id)
                 if from_cache:
