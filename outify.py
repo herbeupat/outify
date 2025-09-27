@@ -108,9 +108,9 @@ def find_existing_song(dir: str, artist: str, album: str, track, title: str, try
         ext_path=find_existing_song_ext(dir, artist, album, track, title, ext)
         if ext_path:
             return ext_path
-    artist_dir_exists = os.path.isdir(dir + '/' + artist)
-    if artist_dir_exists:
-        recursive_track = find_recursive_track(dir + '/' + artist, title)
+    artist_dir = real_existing_sub_dir(dir, artist)
+    if artist_dir:
+        recursive_track = find_recursive_track(artist_dir, title)
         if recursive_track:
             return recursive_track[len(dir)+1:]
     
