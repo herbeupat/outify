@@ -23,6 +23,7 @@ parser.add_argument("--debug", action='store_true')
 parser.add_argument("--search-limit", type=int, default=10)
 parser.add_argument("--add-alternative-spelling", action='append')
 parser.add_argument("--ignore-exclusions", action='store_true')
+parser.add_argument("--cookies-from-browser", help='Set option "--cookies-from-browser" for yt-dlp')
 args=parser.parse_args()
 
 dir = args.dir
@@ -82,6 +83,7 @@ if 'alternative_spellings' in database:
     alternative_spellings = database['alternative_spellings']
 else:
     database['alternative_spellings'] = alternative_spellings
+manual_song = ManualSongSelector(dir, search_limit, force_sync_download, args.cookies_from_browser)
 
 
 def save_database():

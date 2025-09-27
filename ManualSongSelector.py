@@ -16,9 +16,9 @@ except ImportError:
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
 class ManualSongSelector:
-    def __init__(self, dir: str, search_limit: int, force_sync_download: bool):
+    def __init__(self, dir: str, search_limit: int, force_sync_download: bool, cookies_from_browser: str | None):
         self.dir = dir
-        self.yt_instance = YT(dir, search_limit, force_sync_download)
+        self.yt_instance = YT(dir, search_limit, force_sync_download, cookies_from_browser)
         self.can_yt = self.yt_instance.can_run_basic()
         self.logger = logging.getLogger(__name__)
         options = [

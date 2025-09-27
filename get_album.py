@@ -11,6 +11,7 @@ parser.add_argument("--dir", required=True)
 parser.add_argument("--artist", required=True)
 parser.add_argument("--album", required=True)
 parser.add_argument("--year")
+parser.add_argument("--cookies-from-browser", help='Set option "--cookies-from-browser" for yt-dlp')
 args=parser.parse_args()
 
 dir = args.dir
@@ -23,7 +24,7 @@ except:
     print('Cannot initialize Spotipy, will ignore getting metadata from it')
     sp = None
 
-yt_instance = YT(dir, 10, True)
+yt_instance = YT(dir, 10, True, args.cookies_from_browser)
 
 def select_album(artist_name: str, album_name: str)-> dict | None:
     album_search_response = sp.search(artist_name + ' ' + album_name, type=['album'])

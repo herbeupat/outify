@@ -17,13 +17,14 @@ from utils import *
 
 class YT:
 
-    def __init__(self, base_dir, search_limit, force_sync_download: bool):
+    def __init__(self, base_dir, search_limit, force_sync_download: bool, cookies_from_browser: str | None):
         self.base_dir = base_dir
         self.ytmusic = YTMusic()
         self.search_limit = search_limit
         self.batch_output = False # not working, have to investigate that
         self.force_sync_download = force_sync_download
         self.logger = logging.getLogger(__name__)
+        self.cookies_from_browser = cookies_from_browser
 
 
     def set_batch_output(self, value: bool):
@@ -82,7 +83,12 @@ class YT:
 
         if effective_output:
             print(f"Downloading file for {title}")
-        yt_dlp_result = subprocess.run(["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet", url])
+        yt_dlp_args = ["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet"]
+        if self.cookies_from_browser:
+            yt_dlp_args.append("--cookies-from-browser")
+            yt_dlp_args.append(self.cookies_from_browser)
+        yt_dlp_args.append(url)
+        yt_dlp_result = subprocess.run(yt_dlp_args)
         if yt_dlp_result.returncode != 0:
             self.logger.debug(yt_dlp_result.stderr)
             if effective_output:
@@ -205,7 +211,13 @@ class YT:
         tmp_dir = f"/tmp/{ts}"
         os.mkdir(tmp_dir)
         file_format = tmp_dir + os.sep + "%(playlist_index)s %(title)s.%(ext)s"
-        subprocess.run(["yt-dlp", "-f", "140", "-o", file_format, url])
+
+        yt_dlp_args = ["yt-dlp", "-f", "140", "-o", file_format]
+        if self.cookies_from_browser:
+            yt_dlp_args.append("--cookies-from-browser")
+            yt_dlp_args.append(self.cookies_from_browser)
+        yt_dlp_args.append(url)
+        subprocess.run(yt_dlp_args)
 
         for file in os.listdir(tmp_dir):
             print(f"Convert {file}")
