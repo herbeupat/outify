@@ -14,7 +14,7 @@ from unidecode import unidecode
 
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
-parser.add_argument("--playlist", help='Only import this playlist')
+parser.add_argument("--playlist", help='Only import these playlists', action='append')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
 parser.add_argument("--only-self", action='store_true')
@@ -29,7 +29,7 @@ args=parser.parse_args()
 dir = args.dir
 playlist_prefix = args.playlist_prefix
 auto = args.auto
-single_playlist = args.playlist
+only_playlists = args.playlist
 force_sync_download = args.force_sync_download
 debug = args.debug
 ignore_exclusions = args.ignore_exclusions
@@ -196,17 +196,18 @@ def artists_combinations(artist_objects):
     return possibilites
 
 
-if single_playlist:
-    print(f"Will only process playlist named {single_playlist}")
+if only_playlists:
+    print(f"Will only process playlist named {only_playlists}")
 
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
-        if single_playlist:
-            if playlist['name'] != single_playlist:
-                continue
+        if only_playlists:
+            if playlist['name'] in only_playlists:
+                print('Importing single playlist ' + playlist['name'])
             else:
-                print('Importing single playlist ' + single_playlist)
+                continue 
+                
         print(f"{i + 1 + playlists['offset']:4d} - {playlist['name']} - has {playlist['tracks']['total']} songs")
         if only_self:
             is_self = playlist['owner']['id'] == self_id

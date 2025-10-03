@@ -82,7 +82,7 @@ class YT:
         file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
 
         if effective_output:
-            print(f"Downloading file for {title}")
+            print(f"Downloading file for {artist} {title}")
         yt_dlp_args = ["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet"]
         if self.cookies_from_browser:
             yt_dlp_args.append("--cookies-from-browser")
