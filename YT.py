@@ -166,7 +166,7 @@ class YT:
         else:
             self.logger.debug(f"Async download of {url}")
             def return_function():
-                self.try_download(url, artists, album, track, title, year, image_url, False)
+                return self.try_download(url, artists, album, track, title, year, image_url, False)
             return return_function
 
 

@@ -26,13 +26,13 @@ class Playlist:
 
 
     def add_waiting_song(self, task):
-        self.list.append("WAITING_TASK")
         self.waiting_tasks.append(
             {
                 'task': task,
                 'pos': len(self.list)
             }
         )
+        self.list.append("WAITING_TASK")
         if not self.thread:
             self.thread = threading.Thread(target=self.process_waiting_tasks)
             self.thread.start()
@@ -66,6 +66,9 @@ class Playlist:
         playlist_file = open(playlist_path, 'w')
         playlist_file.write('#EXTM3U\n')
         for item in self.list:
+            if item == 'WAITING_TASK':
+                print(f"{WARNING} invalid item {item} won't be saved{ENDC}")
+                continue
             playlist_file.write(item)
             playlist_file.write("\n")
         playlist_file.close()
