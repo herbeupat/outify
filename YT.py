@@ -72,7 +72,7 @@ class YT:
             if effective_output:
                 print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
             return None
-        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3'
+        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3' if track > 0 else f'{album_dir}{os.sep} {sanitize_file_name(title)}.mp3'
         if os.path.isfile(file_path_mp3):
             return file_path_mp3
 
@@ -82,7 +82,7 @@ class YT:
         file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
 
         if effective_output:
-            print(f"Downloading file for {artist} {title}")
+            print(f"Downloading file for {artist} - {title}")
         yt_dlp_args = ["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet"]
         if self.cookies_from_browser:
             yt_dlp_args.append("--cookies-from-browser")
@@ -124,7 +124,8 @@ class YT:
         tag_file["title"] = title
         if year:
             tag_file["date"] = year
-        tag_file["tracknumber"] = str(track)
+        if track > 0:
+            tag_file["tracknumber"] = str(track)
         tag_file.save()
 
         if image_url:
