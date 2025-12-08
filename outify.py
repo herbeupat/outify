@@ -24,6 +24,7 @@ parser.add_argument("--search-limit", type=int, default=10)
 parser.add_argument("--add-alternative-spelling", action='append')
 parser.add_argument("--ignore-exclusions", action='store_true')
 parser.add_argument("--cookies-from-browser", help='Set option "--cookies-from-browser" for yt-dlp')
+parser.add_argument("--from-playlist", help='Skip playlists before this one (useful to resume)')
 args=parser.parse_args()
 
 dir = args.dir
@@ -34,6 +35,9 @@ force_sync_download = args.force_sync_download
 debug = args.debug
 ignore_exclusions = args.ignore_exclusions
 cookies_from_browser = args.cookies_from_browser
+from_playlist = args.from_playlist
+
+wait_from_playlist = True if from_playlist else False
 
 logger = logging.getLogger(__name__)
 level = logging.DEBUG if args.debug else logging.INFO
@@ -142,7 +146,7 @@ def find_recursive_track(dir: str, title: str) -> str | None:
             if recursive_dir_found:
                 return recursive_dir_found
         else:
-            regexp_compatible_title = title.replace("\\", "\\\\").replace("*", "\\*").replace("(", "\\(").replace(")", "\\)")
+            regexp_compatible_title = title.replace("\\", "\\\\").replace("*", "\\*").replace("(", "\\(").replace(")", "\\)").replace("+", "\\+")
             regexp = '^([0-9\\- ]+ )?' + regexp_compatible_title + '(' + suffixes_regex + ')?' + exts_regex + '$'
             if re.search(regexp, file, re.IGNORECASE):
                 return dir + '/' + file
@@ -213,6 +217,12 @@ while playlists:
             is_self = playlist['owner']['id'] == self_id
             if not is_self:
                 print('Skip not self playlist')
+                continue
+
+        if wait_from_playlist:
+            if playlist['name'] == from_playlist:
+                wait_from_playlist = False
+            else:
                 continue
 
         # reset overrides
