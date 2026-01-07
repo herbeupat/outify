@@ -63,7 +63,7 @@ class YT:
             os.mkdir(artist_dir)
         elif os.path.isfile(artist_dir):
             if effective_output:
-                print(f"{WARNING}File with artist name {artist_dir} exists, cannot create directory{ENDC}")
+                print(f"{WARNING}F ile with artist name {artist_dir} exists, cannot create directory{ENDC}")
             return None
         album_dir = artist_dir + os.sep + sanitize_file_name(album)
         if not os.path.exists(album_dir):
@@ -76,23 +76,35 @@ class YT:
         if os.path.isfile(file_path_mp3):
             return file_path_mp3
 
-        ts = time.time()
+        if effective_output:
+            print(f"Downloading file for {artist} - {title}")
+        
+        file_path_temp_mp3 = self.just_download(url, effective_output)
 
+        if effective_output:
+            print('Tagging file')
+        self.do_tag_file(album, artists, effective_output, file_path_temp_mp3, image_url, title, track, year, None)
+
+        shutil.move(file_path_temp_mp3, file_path_mp3)
+
+        return file_path_mp3
+
+
+    def just_download(self, url: str, effective_output: bool) -> str:
+        ts = time.time() 
         file_path_temp_m4a = f"/tmp/outify.{ts}.m4a"
         file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
 
-        if effective_output:
-            print(f"Downloading file for {artist} - {title}")
         yt_dlp_args = ["yt-dlp", "-f", "140", "-o", file_path_temp_m4a, "--quiet"]
         if self.cookies_from_browser:
             yt_dlp_args.append("--cookies-from-browser")
             yt_dlp_args.append(self.cookies_from_browser)
         yt_dlp_args.append(url)
-        yt_dlp_result = subprocess.run(yt_dlp_args)
+        yt_dlp_result = subprocess.run(yt_dlp_args) #, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if yt_dlp_result.returncode != 0:
             self.logger.debug(yt_dlp_result.stderr)
             if effective_output:
-                print(f"{WARNING} error while downloading {title}")
+                print(f"{WARNING} error while downloading {url}")
             return None
         if effective_output:
             print('Converting file')
@@ -100,25 +112,17 @@ class YT:
         if ffmpeg_result.returncode != 0:
             self.logger.debug(ffmpeg_result.stderr)
             if effective_output:
-                print(f"{WARNING} error while converting {title}")
+                print(f"{WARNING} error while converting {url}")
             return None
-
-
-        if effective_output:
-            print('Tagging file')
-        self.do_tag_file(album, artists, effective_output, file_path_temp_mp3, image_url, title, track, ts, year)
-
-        shutil.move(file_path_temp_mp3, file_path_mp3)
-
         os.remove(file_path_temp_m4a)
+        return file_path_temp_mp3
 
-        return file_path_mp3
 
     def do_tag_file(self, album: str, artists: list[str], effective_output: bool, file_path_temp_mp3: str,
-                    image_url: str | None, title: str, track: int, ts: float, year: str | None):
+                    image_url: str | None, title: str, track: int, year: str | None, albumartist: str | None):
 
         tag_file = EasyID3(file_path_temp_mp3)
-        tag_file["albumartist"] = artists[0]
+        tag_file["albumartist"] = albumartist if albumartist else artists[0]
         tag_file["artist"] = ", ".join(artists)
         tag_file["album"] = album
         tag_file["title"] = title
@@ -131,6 +135,7 @@ class YT:
         if image_url:
             if effective_output:
                 print('Tagging album cover')
+            ts = time.time() 
             cover_temp_file = f"/tmp/outify_cover{ts}.jpg"
             urllib.request.urlretrieve(image_url, cover_temp_file)
             raw_image = open(cover_temp_file, 'rb').read()
@@ -241,3 +246,36 @@ class YT:
             shutil.move(file_path_temp_mp3, file_path_mp3)
 
         return url
+
+
+    def replace_file(self, original_file: str, url: str) -> str:
+        original_file_tag = EasyID3(original_file)
+        albumartist = original_file_tag["albumartist"][0]
+        artists = original_file_tag["artist"]
+        album = original_file_tag["album"][0]
+        title = original_file_tag["title"][0]
+        #date = original_file_tag["date"]
+        try:
+            date = original_file_tag["date"][0]
+        except:
+            date = None
+        try:
+            tracknumber = original_file_tag["tracknumber"][0]
+            effective_track = int(tracknumber)
+        except:
+            effective_track = 0
+        
+        print(f"Original file data: {artists} {albumartist} {album} {title} {date} {effective_track}")
+
+        new_file = self.just_download(url, True)
+        self.do_tag_file(album, artists, True, new_file, None, title, effective_track, date, albumartist)
+
+        image_tag_file = ID3(original_file)
+        orginal_image_data = image_tag_file.getall("APIC")
+        if orginal_image_data:
+            new_file_tag = ID3(new_file)
+            new_file_tag.setall('APIC', orginal_image_data)
+            new_file_tag.save()
+
+        print(f"Output file is {new_file}")
+        shutil.move(new_file, original_file)
