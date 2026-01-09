@@ -250,9 +250,15 @@ class YT:
 
     def replace_file(self, original_file: str, url: str) -> str:
         original_file_tag = EasyID3(original_file)
-        albumartist = original_file_tag["albumartist"][0]
         artists = original_file_tag["artist"]
-        album = original_file_tag["album"][0]
+        try:
+            albumartist = original_file_tag["albumartist"][0]
+        except:
+            albumartist = artists[0]
+        try:
+            album = original_file_tag["album"][0]
+        except:
+            album = "Unknown album"
         title = original_file_tag["title"][0]
         #date = original_file_tag["date"]
         try:
@@ -277,5 +283,4 @@ class YT:
             new_file_tag.setall('APIC', orginal_image_data)
             new_file_tag.save()
 
-        print(f"Output file is {new_file}")
         shutil.move(new_file, original_file)
