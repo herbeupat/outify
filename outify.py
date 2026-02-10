@@ -14,6 +14,7 @@ from unidecode import unidecode
 
 parser=argparse.ArgumentParser(description="Outify")
 parser.add_argument("--dir", required=True)
+parser.add_argument("--playlist-by-id", help='Get playlist by id instead of listing your playlists')
 parser.add_argument("--playlist", help='Only import these playlists', action='append')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
@@ -36,6 +37,7 @@ debug = args.debug
 ignore_exclusions = args.ignore_exclusions
 cookies_from_browser = args.cookies_from_browser
 from_playlist = args.from_playlist
+playlist_by_id = args.playlist_by_id
 
 wait_from_playlist = True if from_playlist else False
 
@@ -203,6 +205,115 @@ def artists_combinations(artist_objects):
 if only_playlists:
     print(f"Will only process playlist named {only_playlists}")
 
+
+def process_playlist(playlist):
+    # reset overrides
+    overrides['skip_for_current_playlist'] = auto
+    manual_song.set_batch_output(False)
+
+    current_playlist = Playlist(dir, playlist_prefix + sanitize_file_name(playlist['name']) + '.m3u')
+    playlist_tracks = sp.playlist_items(playlist['uri'])
+    while playlist_tracks:
+        total = playlist_tracks['total']
+        offset = playlist_tracks['offset']
+        for i, track_item in enumerate(playlist_tracks['items']):
+            track = track_item['track']
+            if not track:
+                continue
+            title= track['name']
+
+            track_id = track['id']
+            if track_id is None:
+                track_id = track['uri'] # for Spotify local files
+            if track_id in exclude_cache:
+                if ignore_exclusions:
+                    print(f"\n{WARNING}Track {title} was excluded but exclusions ignored{ENDC}\n")
+                else:
+                    print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
+                    continue
+            
+            album= track['album']['name']
+            track_number= track['track_number']
+            artist_names= list(map(lambda artist: artist['name'], track['artists']))
+            possibilities = artists_combinations(artist_names)
+            line = f"Searching for {offset + i + 1}/{total} {possibilities[0]} - {title}"
+            print(f"\r{line:125} ", end='')
+            current_found = None
+            from_cache = session_cache.get(track_id)
+            if from_cache:
+                if from_cache == 'NOT_FOUND':
+                    continue
+                current_found = from_cache
+                current_playlist.add_song(current_found)
+                continue
+
+            for artist in possibilities:
+                current_found = find_existing_song(dir, artist, album, track_number, title, True)
+                if current_found:
+                    break
+                else:
+                    ctitle = clean_title(title)
+                    if ctitle != title:
+                        current_found = find_existing_song(dir, artist, album, track_number, ctitle, True)
+                        if current_found:
+                            break
+
+            if not current_found:
+                existing_in_mapping = songs_to_files.get(track_id, None)
+                if existing_in_mapping:
+                    if os.path.exists(existing_in_mapping):
+                        current_found = existing_in_mapping
+                    elif os.path.exists(dir + '/' + existing_in_mapping):
+                        current_found = existing_in_mapping
+
+            skip_for_current_playlist = overrides['skip_for_current_playlist']
+
+            if not current_found:
+                if not skip_for_current_playlist:
+                    year = track['album']['release_date']
+                    album_cover_url = track['album']['images'][0]['url'] if track['album']['images'] else None
+                    current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
+                    logger.debug(f"Current found value is {current_found}")
+                    if current_found == 'BEFORE_EXIT':
+                        manual_song.set_batch_output(True)
+                        current_playlist.write_to_disk()
+                        save_database()
+                        exit(0)
+                    elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':
+                        overrides['skip_for_current_playlist'] = True
+                    elif current_found == 'EXCLUDE_TRACK':
+                        exclude_cache.append(track_id) 
+                    elif callable(current_found):
+                        current_playlist.add_waiting_song(current_found)
+                        current_found = None
+                    elif current_found:
+                        songs_to_files[track_id] = current_playlist.format_file_name(current_found)
+
+                else:
+                    print(f"{WARNING} Song not found {ENDC}")
+
+            if current_found:
+                current_playlist.add_song(current_found)
+                session_cache[track_id] = current_found
+            else:
+                session_cache[track_id] = 'NOT_FOUND'
+
+
+        if playlist_tracks['next']:
+            playlist_tracks = sp.next(playlist_tracks)
+        else:
+            manual_song.set_batch_output(True)
+            current_playlist.write_to_disk()
+            playlist_tracks = None
+
+if playlist_by_id:
+    playlist = sp.playlist(playlist_by_id)
+    process_playlist(playlist)
+    save_database()
+    exit(0)
+
+
+
 playlists = sp.current_user_playlists()
 while playlists:
     for i, playlist in enumerate(playlists['items']):
@@ -225,104 +336,7 @@ while playlists:
             else:
                 continue
 
-        # reset overrides
-        overrides['skip_for_current_playlist'] = auto
-        manual_song.set_batch_output(False)
-
-        current_playlist = Playlist(dir, playlist_prefix + sanitize_file_name(playlist['name']) + '.m3u')
-        playlist_tracks = sp.playlist_items(playlist['uri'])
-        while playlist_tracks:
-            total = playlist_tracks['total']
-            offset = playlist_tracks['offset']
-            for i, track_item in enumerate(playlist_tracks['items']):
-                track = track_item['track']
-                if not track:
-                    continue
-                title= track['name']
-
-                track_id = track['id']
-                if track_id is None:
-                    track_id = track['uri'] # for Spotify local files
-                if track_id in exclude_cache:
-                    if ignore_exclusions:
-                        print(f"\n{WARNING}Track {title} was excluded but exclusions ignored{ENDC}\n")
-                    else:
-                        print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
-                        continue
-                
-                album= track['album']['name']
-                track_number= track['track_number']
-                artist_names= list(map(lambda artist: artist['name'], track['artists']))
-                possibilities = artists_combinations(artist_names)
-                line = f"Searching for {offset + i + 1}/{total} {possibilities[0]} - {title}"
-                print(f"\r{line:125} ", end='')
-                current_found = None
-                from_cache = session_cache.get(track_id)
-                if from_cache:
-                    if from_cache == 'NOT_FOUND':
-                        continue
-                    current_found = from_cache
-                    current_playlist.add_song(current_found)
-                    continue
-
-                for artist in possibilities:
-                    current_found = find_existing_song(dir, artist, album, track_number, title, True)
-                    if current_found:
-                        break
-                    else:
-                        ctitle = clean_title(title)
-                        if ctitle != title:
-                            current_found = find_existing_song(dir, artist, album, track_number, ctitle, True)
-                            if current_found:
-                                break
-
-                if not current_found:
-                    existing_in_mapping = songs_to_files.get(track_id, None)
-                    if existing_in_mapping:
-                        if os.path.exists(existing_in_mapping):
-                            current_found = existing_in_mapping
-                        elif os.path.exists(dir + '/' + existing_in_mapping):
-                            current_found = existing_in_mapping
-
-                skip_for_current_playlist = overrides['skip_for_current_playlist']
-
-                if not current_found:
-                    if not skip_for_current_playlist:
-                        year = track['album']['release_date']
-                        album_cover_url = track['album']['images'][0]['url'] if track['album']['images'] else None
-                        current_found = manual_song.get_manual_song(title, album, artist_names, track_number, year, album_cover_url)
-                        logger.debug(f"Current found value is {current_found}")
-                        if current_found == 'BEFORE_EXIT':
-                            manual_song.set_batch_output(True)
-                            current_playlist.write_to_disk()
-                            save_database()
-                            exit(0)
-                        elif current_found == 'SKIP_FOR_CURRENT_PLAYLIST':
-                            overrides['skip_for_current_playlist'] = True
-                        elif current_found == 'EXCLUDE_TRACK':
-                            exclude_cache.append(track_id) 
-                        elif callable(current_found):
-                            current_playlist.add_waiting_song(current_found)
-                            current_found = None
-                        elif current_found:
-                            songs_to_files[track_id] = current_playlist.format_file_name(current_found)
-
-                    else:
-                        print(f"{WARNING} Song not found {ENDC}")
-
-                if current_found:
-                    current_playlist.add_song(current_found)
-                    session_cache[track_id] = current_found
-                else:
-                    session_cache[track_id] = 'NOT_FOUND'
-
-
-            if playlist_tracks['next']:
-                playlist_tracks = sp.next(playlist_tracks)
-            else:
-                manual_song.set_batch_output(True)
-                current_playlist.write_to_disk()
-                playlist_tracks = None
+        process_playlist(playlist)
 
 
 
