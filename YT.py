@@ -80,6 +80,8 @@ class YT:
             print(f"Downloading file for {artist} - {title}")
         
         file_path_temp_mp3 = self.just_download(url, effective_output)
+        if file_path_temp_mp3 is None:
+            return None
 
         if effective_output:
             print('Tagging file')
@@ -248,7 +250,7 @@ class YT:
         return url
 
 
-    def replace_file(self, original_file: str, url: str) -> str:
+    def replace_file(self, original_file: str, url: str):
         original_file_tag = EasyID3(original_file)
         artists = original_file_tag["artist"]
         try:
@@ -274,6 +276,9 @@ class YT:
         print(f"Original file data: {artists} {albumartist} {album} {title} {date} {effective_track}")
 
         new_file = self.just_download(url, True)
+        if new_file is None:
+            print("Cannot download file, abort")
+            return 
         self.do_tag_file(album, artists, True, new_file, None, title, effective_track, date, albumartist)
 
         image_tag_file = ID3(original_file)
