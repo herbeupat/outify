@@ -72,7 +72,7 @@ class YT:
             if effective_output:
                 print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
             return None
-        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3' if track > 0 else f'{album_dir}{os.sep} {sanitize_file_name(title)}.mp3'
+        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3' if track > 0 else f'{album_dir}{os.sep}{sanitize_file_name(title)}.mp3'
         if os.path.isfile(file_path_mp3):
             return file_path_mp3
 
