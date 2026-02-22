@@ -211,7 +211,7 @@ def process_playlist(playlist):
     overrides['skip_for_current_playlist'] = auto
     manual_song.set_batch_output(False)
 
-    current_playlist = Playlist(dir, playlist_prefix + sanitize_file_name(playlist['name']) + '.m3u')
+    current_playlist = Playlist(dir, playlist_prefix + sanitize_file_name(playlist['name']) + '.m3u', False)
     playlist_tracks = sp.playlist_items(playlist['uri'])
     while playlist_tracks:
         total = playlist_tracks['total']

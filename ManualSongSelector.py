@@ -2,6 +2,7 @@ import logging
 
 from simple_term_menu import TerminalMenu
 
+from TD import TD
 from YT import YT
 from utils import WARNING, ENDC, exts
 import os
@@ -19,6 +20,7 @@ class ManualSongSelector:
     def __init__(self, dir: str, search_limit: int, force_sync_download: bool, cookies_from_browser: str | None):
         self.dir = dir
         self.yt_instance = YT(dir, search_limit, force_sync_download, cookies_from_browser)
+        self.td_instance = TD(dir)
         self.can_yt = self.yt_instance.can_run_basic()
         self.logger = logging.getLogger(__name__)
         options = [
@@ -26,7 +28,8 @@ class ManualSongSelector:
             "[l] list all files in directories named with the artist(s)",
             "[q] stop for now and quit",
             "[s] skip song",
-            "[t] skip all missing songs in this playlist",
+            "[w] skip all missing songs in this playlist",
+            "[t] search from Tidal WTF",
             "[x] exclude this track from future analyses"
         ]
         if has_gui:
@@ -85,6 +88,10 @@ class ManualSongSelector:
                     print(f"{WARNING}Error while downloading Youtube file, try again{ENDC}")
             elif self.can_yt and choice == 'z':
                 file = self.yt_instance.search_yt_music(artists, album, track, title, year, album_cover_url)
+                if file:
+                    return file
+            elif choice == 't':
+                file = self.td_instance.search_td_music(artists, album, track, title, year, album_cover_url)
                 if file:
                     return file
             elif choice == 'q':

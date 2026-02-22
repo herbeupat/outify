@@ -13,6 +13,7 @@ from simple_term_menu import TerminalMenu
 from ytmusicapi import YTMusic
 import re
 
+from Tagger import do_tag_file
 from utils import *
 
 class YT:
@@ -85,7 +86,7 @@ class YT:
 
         if effective_output:
             print('Tagging file')
-        self.do_tag_file(album, artists, effective_output, file_path_temp_mp3, image_url, title, track, year, None)
+        do_tag_file(album, artists, effective_output, file_path_temp_mp3, image_url, title, track, year, None)
 
         shutil.move(file_path_temp_mp3, file_path_mp3)
 
@@ -118,37 +119,6 @@ class YT:
             return None
         os.remove(file_path_temp_m4a)
         return file_path_temp_mp3
-
-
-    def do_tag_file(self, album: str, artists: list[str], effective_output: bool, file_path_temp_mp3: str,
-                    image_url: str | None, title: str, track: int, year: str | None, albumartist: str | None):
-
-        tag_file = EasyID3(file_path_temp_mp3)
-        tag_file["albumartist"] = albumartist if albumartist else artists[0]
-        tag_file["artist"] = ", ".join(artists)
-        tag_file["album"] = album
-        tag_file["title"] = title
-        if year:
-            tag_file["date"] = year
-        if track > 0:
-            tag_file["tracknumber"] = str(track)
-        tag_file.save()
-
-        if image_url:
-            if effective_output:
-                print('Tagging album cover')
-            ts = time.time() 
-            cover_temp_file = f"/tmp/outify_cover{ts}.jpg"
-            urllib.request.urlretrieve(image_url, cover_temp_file)
-            raw_image = open(cover_temp_file, 'rb').read()
-            tag_file = ID3(file_path_temp_mp3)
-            tag_file.add(APIC(
-                mime='image/jpg',
-                type=PictureType.COVER_FRONT,
-                data=raw_image
-            ))
-            tag_file.save()
-            os.remove(cover_temp_file)
 
     def search_yt_music(self, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None) -> Callable[[], None] | None:
         search_results = self.ytmusic.search(artists[0] + " " + title, filter='songs', limit=self.search_limit)
@@ -242,7 +212,7 @@ class YT:
             file_path_temp_mp3 = tmp_dir + os.sep + file
             title = tracks[track_index] if len(tracks) > track_index else file[file.index(" ") + 1:]
 
-            self.do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, title, track_index + 1, ts, year)
+            do_tag_file(album, [artist], output, file_path_temp_mp3, image_url, title, track_index + 1, ts, year)
 
             file_path_mp3 = album_dir + os.sep + file
             shutil.move(file_path_temp_mp3, file_path_mp3)
@@ -279,7 +249,7 @@ class YT:
         if new_file is None:
             print("Cannot download file, abort")
             return 
-        self.do_tag_file(album, artists, True, new_file, None, title, effective_track, date, albumartist)
+        do_tag_file(album, artists, True, new_file, None, title, effective_track, date, albumartist)
 
         image_tag_file = ID3(original_file)
         orginal_image_data = image_tag_file.getall("APIC")
