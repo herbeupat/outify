@@ -6,13 +6,17 @@ from utils import *
 
 class Playlist:
 
-    def __init__(self, dir, name):
+    def __init__(self, dir: str, name: str, append: bool):
         self.dir = dir
-        self.name = name
+        if name.endswith(".m3u"):
+            self.name = name
+        else:
+            self.name = name + ".m3u"
         self.list = []
         self.waiting_tasks = []
         self.thread = None
         self.print_thread_update_status = False
+        self.append = append
 
 
     def format_file_name(self, file_name: str):
@@ -63,8 +67,11 @@ class Playlist:
             return
         playlist_path = self.dir + os.sep + self.name
         print("\nSaving playlist to " + playlist_path)
-        playlist_file = open(playlist_path, 'w')
-        playlist_file.write('#EXTM3U\n')
+        if self.append and os.path.isfile(playlist_path):
+            playlist_file = open(playlist_path, 'a')
+        else:
+            playlist_file = open(playlist_path, 'w')
+            playlist_file.write('#EXTM3U\n')
         for item in self.list:
             if item == 'WAITING_TASK':
                 print(f"{WARNING} invalid item {item} won't be saved{ENDC}")
