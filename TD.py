@@ -21,7 +21,7 @@ class TD:
         self.base_url = 'https://wolf.qqdl.site'
 
     def search_td_music(self, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None) -> Callable[[], None] | None:
-        search_url = self.base_url + f"/search/?s={title} {' '.join(artists)}"
+        search_url = f"{self.base_url}/search/?s={title} {' '.join(artists)}"
         search_response = requests.get(search_url)
         items = search_response.json()["data"]["items"]
         if len(items) == 0:
@@ -29,6 +29,7 @@ class TD:
             return None
         options = []
         for i, item in enumerate(items):
+
             item_artists = list(map(lambda artist: artist['name'], item['artists'] if 'artists' in item else []))
             artists_ = f"{i + 1: 2d} {item['title']} - {', '.join(item_artists)}"
             option = artists_
@@ -41,9 +42,16 @@ class TD:
             return None
 
         track_id = items[selected]["id"]
-        track_info_url = f"https://triton.squid.wtf/track/?id={track_id}&quality=HIGH"
+        track_info_url = f"{self.base_url}/track/?id={track_id}&quality=HIGH"
         track_info = requests.get(track_info_url).json()
-        manifest_base64 = track_info["data"]["manifest"]
+        if "data" not in track_info:
+            print(f"{WARNING} Selected track has no data item {ENDC}")
+            return None
+        track_info_data = track_info["data"]
+        if "manifest" not in track_info_data:
+            print(f"{WARNING} Selected track has no manifest {ENDC}")
+            return None
+        manifest_base64 = track_info_data["manifest"]
         manifest_raw = base64.b64decode(manifest_base64).decode("utf-8")
         manifest = json.loads(manifest_raw)
         urls = manifest["urls"]

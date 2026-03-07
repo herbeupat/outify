@@ -169,7 +169,7 @@ def find_existing_song_ext(dir, artist, album, track, title, ext):
     return False
 
 
-def artists_combinations(artist_objects):
+def artists_combinations(artist_objects: list[str], debug: bool = False) -> list[str]:
     list_length = len(artist_objects)
     if list_length == 1:
         return artist_objects
@@ -182,14 +182,15 @@ def artists_combinations(artist_objects):
             possibilites.append(artist_objects[0] + char + artist_objects[1])
             possibilites.append(artist_objects[1] + char + artist_objects[0])
     elif list_length > 4:
-        print(f"\n{WARNING}List too long for combinations, will only use 4 first artists: {artist_objects}{ENDC}")
-        return artists_combinations(artist_objects[0:4])
+        if debug:
+            print(f"\n{WARNING}List too long for combinations, will only use 4 first artists: {artist_objects}{ENDC}")
+        return artists_combinations(artist_objects[0:4], debug)
     else:
         # not optimal but works for now
         for i in range(0, list_length):
             current = artist_objects[i]
             part = artist_objects[0:i] + artist_objects[i + 1:len(artist_objects)]
-            new_combinations = artists_combinations(part)
+            new_combinations = artists_combinations(part, debug)
             possibilites = possibilites + new_combinations
             for nc in new_combinations:
                 for char in combine_chars:
@@ -206,7 +207,7 @@ if only_playlists:
     print(f"Will only process playlist named {only_playlists}")
 
 
-def process_playlist(playlist):
+def process_playlist(playlist, debug: bool):
     # reset overrides
     overrides['skip_for_current_playlist'] = auto
     manual_song.set_batch_output(False)
@@ -235,7 +236,7 @@ def process_playlist(playlist):
             album= track['album']['name']
             track_number= track['track_number']
             artist_names= list(map(lambda artist: artist['name'], track['artists']))
-            possibilities = artists_combinations(artist_names)
+            possibilities = artists_combinations(artist_names, debug)
             line = f"Searching for {offset + i + 1}/{total} {possibilities[0]} - {title}"
             print(f"\r{line:125} ", end='')
             current_found = None
@@ -308,7 +309,7 @@ def process_playlist(playlist):
 
 if playlist_by_id:
     playlist = sp.playlist(playlist_by_id)
-    process_playlist(playlist)
+    process_playlist(playlist, debug)
     save_database()
     exit(0)
 
@@ -336,7 +337,7 @@ while playlists:
             else:
                 continue
 
-        process_playlist(playlist)
+        process_playlist(playlist, debug)
 
 
 

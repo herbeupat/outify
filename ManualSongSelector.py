@@ -96,7 +96,7 @@ class ManualSongSelector:
                     return file
             elif choice == 'q':
                 return 'BEFORE_EXIT'
-            elif choice == 't':
+            elif choice == 'w':
                 return 'SKIP_FOR_CURRENT_PLAYLIST'
             elif choice == 'x':
                 return 'EXCLUDE_TRACK'
