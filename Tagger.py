@@ -2,14 +2,19 @@ import os
 import time
 import urllib
 
+import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, PictureType
 
 
 def do_tag_file(album: str, artists: list[str], effective_output: bool, file_path_temp_mp3: str,
                 image_url: str | None, title: str, track: int, year: str | None, albumartist: str | None):
+    try:
+        tag_file = EasyID3(file_path_temp_mp3)
+    except mutagen.id3.ID3NoHeaderError:
+        tag_file = mutagen.File(file_path_temp_mp3, easy=True)
+        tag_file.add_tags()
 
-    tag_file = EasyID3(file_path_temp_mp3)
     tag_file["albumartist"] = albumartist if albumartist else artists[0]
     tag_file["artist"] = ", ".join(artists)
     tag_file["album"] = album

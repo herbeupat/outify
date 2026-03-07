@@ -2,6 +2,7 @@ import logging
 
 from simple_term_menu import TerminalMenu
 
+from SC import SC
 from TD import TD
 from YT import YT
 from utils import WARNING, ENDC, exts
@@ -21,6 +22,7 @@ class ManualSongSelector:
         self.dir = dir
         self.yt_instance = YT(dir, search_limit, force_sync_download, cookies_from_browser)
         self.td_instance = TD(dir)
+        self.sc_instance = SC(dir)
         self.can_yt = self.yt_instance.can_run_basic()
         self.logger = logging.getLogger(__name__)
         options = [
@@ -30,7 +32,8 @@ class ManualSongSelector:
             "[s] skip song",
             "[w] skip all missing songs in this playlist",
             "[t] search from Tidal WTF",
-            "[x] exclude this track from future analyses"
+            "[x] exclude this track from future analyses",
+            "[c] download from SoundCloud"
         ]
         if has_gui:
             options.append("[d] open file dialog")
@@ -94,6 +97,10 @@ class ManualSongSelector:
                 file = self.td_instance.search_td_music(artists, album, track, title, year, album_cover_url)
                 if file:
                     return file
+            elif choice == 'c':
+                os.system('reset')  # required because conflict with the menu
+                url = input("Enter Soundcloud url\n")
+                return self.sc_instance.download(url, artists, album, track, title, year, album_cover_url, True)
             elif choice == 'q':
                 return 'BEFORE_EXIT'
             elif choice == 'w':
