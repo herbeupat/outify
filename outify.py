@@ -228,7 +228,7 @@ def process_playlist(playlist, debug: bool):
                 track_id = track['uri'] # for Spotify local files
             if track_id in exclude_cache:
                 if ignore_exclusions:
-                    print(f"\n{WARNING}Track {title} was excluded but exclusions ignored{ENDC}\n")
+                    print(f"\n{INFO}Track {title} was excluded but exclusions ignored{ENDC}\n")
                 else:
                     print(f"\n{WARNING}Excluded song{ENDC} {title}, will be skipped")
                     continue
@@ -328,7 +328,7 @@ while playlists:
         if only_self:
             is_self = playlist['owner']['id'] == self_id
             if not is_self:
-                print('Skip not self playlist')
+                print(f"{INFO}Skip not self playlist{ENDC}")
                 continue
 
         if wait_from_playlist:
@@ -337,13 +337,22 @@ while playlists:
             else:
                 continue
 
-        process_playlist(playlist, debug)
-
+        try:
+            process_playlist(playlist, debug)
+        except:
+            print(f"{ERROR} An error occured when calling Spotify API, save database and exit {ENDC}")
+            save_database()
+            exit(1)
 
 
 
     if playlists['next']:
-        playlists = sp.next(playlists)
+        try:
+            playlists = sp.next(playlists)
+        except:
+            print(f"{ERROR} An error occured when calling Spotify API, save database and exit {ENDC}")
+            save_database()
+            exit(1)
     else:
         playlists = None
 

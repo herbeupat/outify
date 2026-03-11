@@ -2,6 +2,8 @@ import os.path
 
 WARNING = '\033[93m'
 ENDC = '\033[0m'
+INFO = '\033[96m'
+ERROR = '\033[91m'
 
 exts = ['.mp3', '.m4a']
 
