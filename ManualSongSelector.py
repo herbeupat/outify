@@ -119,8 +119,6 @@ class ManualSongSelector:
             if artist in self.alternative_spellings:
                 lower_artists.append(self.alternative_spellings[artist].lower())
 
-        print(str(lower_artists))
-
         for subdir in os.listdir(self.dir):
             subdir_path = self.dir + os.sep + subdir
             if os.path.isdir(subdir_path):
