@@ -90,7 +90,6 @@ if 'alternative_spellings' in database:
     alternative_spellings = database['alternative_spellings']
 else:
     database['alternative_spellings'] = alternative_spellings
-manual_song = ManualSongSelector(dir, search_limit, force_sync_download, args.cookies_from_browser)
 
 
 def save_database():
@@ -105,7 +104,7 @@ if add_alternative_spelling and len(add_alternative_spelling) > 0:
             alternative_spellings[split[0]] = split[1]
     save_database()
 
-manual_song = ManualSongSelector(dir, search_limit, force_sync_download, cookies_from_browser)
+manual_song = ManualSongSelector(dir, search_limit, force_sync_download, cookies_from_browser, alternative_spellings)
 
 
 

@@ -18,13 +18,14 @@ except ImportError:
 dialog_file_types = [ ("Audio files", ".mp3 .m4a") ]
 
 class ManualSongSelector:
-    def __init__(self, dir: str, search_limit: int, force_sync_download: bool, cookies_from_browser: str | None):
+    def __init__(self, dir: str, search_limit: int, force_sync_download: bool, cookies_from_browser: str | None, alternative_spellings: dict[str, str]):
         self.dir = dir
         self.yt_instance = YT(dir, search_limit, force_sync_download, cookies_from_browser)
         self.td_instance = TD(dir)
         self.sc_instance = SC(dir)
         self.can_yt = self.yt_instance.can_run_basic()
         self.logger = logging.getLogger(__name__)
+        self.alternative_spellings = alternative_spellings
         options = [
             "[m] enter manual path",
             "[l] list all files in directories named with the artist(s)",
@@ -114,6 +115,11 @@ class ManualSongSelector:
     def get_from_artists_files(self, artists: list[str], song: str) -> str | None:
         possibilities = []
         lower_artists = list(map(lambda artist: artist.lower(), artists))
+        for artist in artists:
+            if artist in self.alternative_spellings:
+                lower_artists.append(self.alternative_spellings[artist].lower())
+
+        print(str(lower_artists))
 
         for subdir in os.listdir(self.dir):
             subdir_path = self.dir + os.sep + subdir
