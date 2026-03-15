@@ -18,11 +18,11 @@ parser.add_argument("--playlist-by-id", help='Get playlist by id instead of list
 parser.add_argument("--playlist", help='Only import these playlists', action='append')
 parser.add_argument("--playlist-prefix", default='outify-')
 parser.add_argument("--auto", action='store_true')
-parser.add_argument("--only-self", action='store_true')
+parser.add_argument("--only-self", action='store_true', help="Ignore playlist created by other users. Will be ignored if 'playlist' or 'playlist-by-id' is defined")
 parser.add_argument("--force-sync-download", action='store_true')
 parser.add_argument("--debug", action='store_true')
 parser.add_argument("--search-limit", type=int, default=10)
-parser.add_argument("--add-alternative-spelling", action='append')
+parser.add_argument("--add-alternative-spelling", action='append', help="Allow to search for another spelling for an artist.\nFormat: <spelling>=<alternative spelling>")
 parser.add_argument("--ignore-exclusions", action='store_true')
 parser.add_argument("--cookies-from-browser", help='Set option "--cookies-from-browser" for yt-dlp')
 parser.add_argument("--from-playlist", help='Skip playlists before this one (useful to resume)')
@@ -47,6 +47,12 @@ logging.basicConfig(filename='outify.log', level=level)
 
 
 only_self = args.only_self
+if only_self and only_playlists is not None:
+    print(f"{WARNING} only-self and playlist are exclusive, only-self will be ignored{ENDC}")
+    only_self = False
+if only_self and playlist_by_id is not None:
+    print(f"{WARNING} only-self and playlist by id are exclusive, only-self will be ignored{ENDC}")
+    only_self = False
 overrides = {
     'skip_for_current_playlist': auto
 }
