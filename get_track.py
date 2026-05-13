@@ -9,8 +9,10 @@ parser.add_argument("--artist", "-a", required=True)
 parser.add_argument("--album", "-l", required=True)
 parser.add_argument("--title", "-t", required=True)
 parser.add_argument("--year", "-y")
+parser.add_argument("--track", "-k", type=int, default=0)
 parser.add_argument("--cookies-from-browser", help='Set option "--cookies-from-browser" for yt-dlp')
 parser.add_argument("--add-to-playlist", "-p", action='append')
+parser.add_argument("--cover", "-c")
 parser.add_argument("url")
 args=parser.parse_args()
 
@@ -19,7 +21,7 @@ add_to_playlist = args.add_to_playlist
 
 
 yt_instance = YT(dir, 10, True, args.cookies_from_browser)
-downloaded_file_path = yt_instance.download(args.url, [args.artist], args.album, 0, args.title, args.year, None, True)
+downloaded_file_path = yt_instance.download(args.url, [args.artist], args.album, args.track, args.title, args.year, args.cover, True)
 
 if downloaded_file_path and add_to_playlist:
     for playlist_file in add_to_playlist:
