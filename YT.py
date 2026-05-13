@@ -6,15 +6,13 @@ import time
 from typing import Callable
 
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3, APIC, PictureType
-import urllib.request
-
+from mutagen.id3 import ID3
 from simple_term_menu import TerminalMenu
 from ytmusicapi import YTMusic
-import re
 
 from Tagger import do_tag_file
 from utils import *
+
 
 class YT:
 
@@ -55,7 +53,7 @@ class YT:
             return None
 
 
-    def download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None, output:bool) -> str | None:
+    def download(self, url: str, artists: list[str], album: str, track: int | None, title: str, year: str | None, image_url: str | None, output:bool) -> str | None:
         self.logger.debug(f"Start download {url}")
         artist = artists[0]
         artist_dir = self.base_dir + os.sep + sanitize_file_name(artist)
@@ -73,7 +71,7 @@ class YT:
             if effective_output:
                 print(f"{WARNING}File with album name {album_dir} exists, cannot create directory{ENDC}")
             return None
-        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3' if track > 0 else f'{album_dir}{os.sep}{sanitize_file_name(title)}.mp3'
+        file_path_mp3 = f'{album_dir}{os.sep}{track:02d} {sanitize_file_name(title)}.mp3' if track and track > 0 else f'{album_dir}{os.sep}{sanitize_file_name(title)}.mp3'
         if os.path.isfile(file_path_mp3):
             return file_path_mp3
 
@@ -127,7 +125,7 @@ class YT:
             print(f"{WARNING} No result {ENDC}")
             return None
         for i, item in enumerate(search_results):
-            video_artists=list(map(lambda artist: artist['name'], item['artists'] if 'artists' in item else []))
+            video_artists = list(map(lambda artist: artist['name'], item['artists'] if 'artists' in item else []))
             option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)}"
             options.append(option)
         options.append("[a] abort")
@@ -259,3 +257,29 @@ class YT:
             new_file_tag.save()
 
         shutil.move(new_file, original_file)
+
+    def search_and_download(self, query):
+        search_results = self.ytmusic.search(query, filter='songs', limit=self.search_limit)
+        options = []
+        if len(search_results) == 0:
+            print(f"{WARNING} No result {ENDC}")
+            return None
+        for i, item in enumerate(search_results):
+            video_artists = list(map(lambda artist: artist['name'], item['artists'] if 'artists' in item else []))
+            option = f"{i + 1: 2d} {item['title']} - {', '.join(video_artists)}"
+            options.append(option)
+        options.append("[a] abort")
+        terminal_menu = TerminalMenu(options, title=f"Choose a song to download for {query}")
+        selected = terminal_menu.show()
+        if selected is None or (selected == len(options) - 1):
+            return None
+
+        selected_object = search_results[selected]
+        title = selected_object["title"]
+        album = selected_object["album"]["name"]
+        year = selected_object["year"]
+        artists = list(map(lambda artist: artist["name"], selected_object["artists"]))
+        url = 'https://music.youtube.com/watch?v=' + selected_object['videoId']
+        track = None
+        image_url = None
+        return self.download(url, artists, album, track, title, year, image_url, True)

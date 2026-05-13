@@ -8,7 +8,7 @@ from mutagen.id3 import ID3, APIC, PictureType
 
 
 def do_tag_file(album: str, artists: list[str], effective_output: bool, file_path_temp_mp3: str,
-                image_url: str | None, title: str, track: int, year: str | None, albumartist: str | None):
+                image_url: str | None, title: str, track: int | None, year: str | None, albumartist: str | None):
     try:
         tag_file = EasyID3(file_path_temp_mp3)
     except mutagen.id3.ID3NoHeaderError:
@@ -21,7 +21,7 @@ def do_tag_file(album: str, artists: list[str], effective_output: bool, file_pat
     tag_file["title"] = title
     if year:
         tag_file["date"] = year
-    if track > 0:
+    if track and track > 0:
         tag_file["tracknumber"] = str(track)
     tag_file.save()
 
