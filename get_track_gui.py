@@ -14,6 +14,13 @@ from utils import sanitize_file_name
 
 dialog_playlist_types = [("M3U playlists", "*.m3u")]
 SETTINGS_PATH = Path(__file__).resolve().parent / "settings.ini"
+ICONS_DIR = Path(__file__).resolve().parent / "icons"
+OPEN_DIR_ICON_PATH = ICONS_DIR / "open_dir.png"
+NEW_ICON_PATH = ICONS_DIR / "new.png"
+ADD_ICON_PATH = ICONS_DIR / "add.png"
+DELETE_ICON_PATH = ICONS_DIR / "delete.png"
+DOWNLOAD_ICON_PATH = ICONS_DIR / "donwload.png"
+CLEAR_ICON_PATH = ICONS_DIR / "clear.png"
 
 
 def is_soundcloud_url(url: str) -> bool:
@@ -56,14 +63,21 @@ class GetTrackGui:
         form.grid(row=0, column=0, sticky="nsew")
         form.columnconfigure(1, weight=1)
 
-        self.dir_entry = self._labeled_entry(form, "Music library (--dir) *", 0)
-        ttk.Button(form, text="Browse…", command=self._browse_dir).grid(row=0, column=2, padx=(8, 0), pady=4)
+        self.dir_entry = self._labeled_entry(form, "Music library *", 0)
+        self._open_dir_icon = tk.PhotoImage(master=self.root, file=OPEN_DIR_ICON_PATH)
+        ttk.Button(
+            form,
+            text="Browse…",
+            image=self._open_dir_icon,
+            compound="left",
+            command=self._browse_dir,
+        ).grid(row=0, column=2, padx=(8, 0), pady=4)
 
-        self.artist_entry = self._labeled_entry(form, "Artist (-a) *", 1)
-        self.album_entry = self._labeled_entry(form, "Album (-l) *", 2)
-        self.title_entry = self._labeled_entry(form, "Title (-t) *", 3)
-        self.year_entry = self._labeled_entry(form, "Year (-y)", 4)
-        self.track_entry = self._labeled_entry(form, "Track (-k)", 5, width=8)
+        self.artist_entry = self._labeled_entry(form, "Artist *", 1)
+        self.album_entry = self._labeled_entry(form, "Album *", 2)
+        self.title_entry = self._labeled_entry(form, "Title *", 3)
+        self.year_entry = self._labeled_entry(form, "Year", 4)
+        self.track_entry = self._labeled_entry(form, "Track", 5, width=8)
 
         self.cookies_entry = self._labeled_entry(form, "Cookies from browser", 6)
         ttk.Label(
@@ -72,11 +86,11 @@ class GetTrackGui:
             font=("", 8),
         ).grid(row=7, column=1, sticky="w", pady=(0, 4))
 
-        self.cover_entry = self._labeled_entry(form, "Cover URL (-c)", 8)
+        self.cover_entry = self._labeled_entry(form, "Cover URL", 8)
 
         self.url_entry = self._labeled_entry(form, "URL *", 9)
 
-        playlist_frame = ttk.LabelFrame(form, text="Add to playlist (-p)", padding=8)
+        playlist_frame = ttk.LabelFrame(form, text="Add to playlist", padding=8)
         playlist_frame.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(8, 0))
         playlist_frame.columnconfigure(0, weight=1)
 
@@ -86,9 +100,30 @@ class GetTrackGui:
 
         playlist_buttons = ttk.Frame(playlist_frame)
         playlist_buttons.grid(row=0, column=1, sticky="ns", padx=(8, 0))
-        ttk.Button(playlist_buttons, text="New…", command=self._create_playlist).pack(fill="x", pady=(0, 4))
-        ttk.Button(playlist_buttons, text="Add existing…", command=self._add_playlist).pack(fill="x", pady=(0, 4))
-        ttk.Button(playlist_buttons, text="Remove", command=self._remove_playlist).pack(fill="x")
+        self._new_icon = tk.PhotoImage(master=self.root, file=NEW_ICON_PATH)
+        ttk.Button(
+            playlist_buttons,
+            text="New…",
+            image=self._new_icon,
+            compound="left",
+            command=self._create_playlist,
+        ).pack(fill="x", pady=(0, 4))
+        self._add_icon = tk.PhotoImage(master=self.root, file=ADD_ICON_PATH)
+        ttk.Button(
+            playlist_buttons,
+            text="Add existing…",
+            image=self._add_icon,
+            compound="left",
+            command=self._add_playlist,
+        ).pack(fill="x", pady=(0, 4))
+        self._delete_icon = tk.PhotoImage(master=self.root, file=DELETE_ICON_PATH)
+        ttk.Button(
+            playlist_buttons,
+            text="Remove",
+            image=self._delete_icon,
+            compound="left",
+            command=self._remove_playlist,
+        ).pack(fill="x")
 
     def _build_output(self):
         output_frame = ttk.LabelFrame(self.root, text="Output", padding=12)
@@ -104,9 +139,23 @@ class GetTrackGui:
         actions.grid(row=2, column=0, sticky="ew")
         actions.columnconfigure(0, weight=1)
 
-        self.clear_button = ttk.Button(actions, text="Clear", command=self._clear_fields)
+        self._clear_icon = tk.PhotoImage(master=self.root, file=CLEAR_ICON_PATH)
+        self.clear_button = ttk.Button(
+            actions,
+            text="Clear",
+            image=self._clear_icon,
+            compound="left",
+            command=self._clear_fields,
+        )
         self.clear_button.grid(row=0, column=1, sticky="e", padx=(0, 8))
-        self.download_button = ttk.Button(actions, text="Download", command=self._start_download)
+        self._download_icon = tk.PhotoImage(master=self.root, file=DOWNLOAD_ICON_PATH)
+        self.download_button = ttk.Button(
+            actions,
+            text="Download",
+            image=self._download_icon,
+            compound="left",
+            command=self._start_download,
+        )
         self.download_button.grid(row=0, column=2, sticky="e")
 
         self.root.columnconfigure(0, weight=1)
