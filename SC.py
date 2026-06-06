@@ -60,13 +60,22 @@ class SC:
         return file_path_mp3
 
 
-    def just_download(self, url: str, effective_output: bool) -> str:
+    def just_download(self, url: str, effective_output: bool) -> str | None:
         ts = time.time() 
         file_path_temp_mp3 = f'/tmp/outify.{ts}.mp3'
 
-        yt_dlp_args = ["yt-dlp", "-f", "http_mp3_0_0", "-o", file_path_temp_mp3, "--quiet"]
-        yt_dlp_args.append(url)
-        yt_dlp_result = subprocess.run(yt_dlp_args) #, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        accepted_formats_base_output = str(subprocess.run(["yt-dlp", "-F", url], stdout=subprocess.PIPE).stdout).split("\\n")
+        accepted_formats = list(filter(lambda line: line.startswith("hls_mp3_"), accepted_formats_base_output))
+
+        if len(accepted_formats) == 0:
+            print(f"{WARNING} Cannot find mp3 download for {url}")
+            return None
+
+        effective_format = accepted_formats[0].split(" ")[0]
+        print(f"Download format {effective_format}")
+
+        yt_dlp_args = ["yt-dlp", "-f", effective_format, "-o", file_path_temp_mp3, "--quiet", url]
+        yt_dlp_result = subprocess.run(yt_dlp_args)
         if yt_dlp_result.returncode != 0:
             self.logger.debug(yt_dlp_result.stderr)
             if effective_output:
