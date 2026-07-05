@@ -143,6 +143,7 @@ document.getElementById('new-track-btn').addEventListener('click', () => {
   resultEl.style.display = 'none';
   resultEl.textContent = '';
   resultEl.className = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 document.getElementById('track-form').addEventListener('submit', async (e) => {
@@ -193,9 +194,11 @@ document.getElementById('track-form').addEventListener('submit', async (e) => {
     const data = await response.json();
     resultEl.className = response.ok ? 'success' : 'error';
     resultEl.textContent = JSON.stringify(data, null, 2);
+    alert(response.ok ? 'Download complete: ' + data.file_path : 'Download failed: ' + data.error);
   } catch (err) {
     resultEl.className = 'error';
     resultEl.textContent = 'Request failed: ' + err.message;
+    alert('Download failed: ' + err.message);
   }
 });
 </script>
