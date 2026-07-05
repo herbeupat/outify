@@ -1,6 +1,7 @@
 import argparse
 import configparser
 import hmac
+import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -62,6 +63,17 @@ def require_auth(view):
         return view(*view_args, **view_kwargs)
 
     return wrapped
+
+
+@app.get("/playlists")
+@require_auth
+def list_playlists():
+    names = [
+        entry.removesuffix(".m3u")
+        for entry in os.listdir(base_dir)
+        if entry.endswith(".m3u") and os.path.isfile(os.path.join(base_dir, entry))
+    ]
+    return jsonify(sorted(names))
 
 
 @app.post("/track")

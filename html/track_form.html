@@ -13,6 +13,10 @@
   }
   .hint { font-weight: normal; font-size: 0.8rem; color: #666; }
   button { margin-top: 1.5rem; padding: 0.6rem 1.2rem; font-size: 1rem; cursor: pointer; }
+  #playlists { margin-top: 0.2rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  #playlists label { display: flex; align-items: center; gap: 0.4rem; font-weight: normal; margin-top: 0; }
+  #playlists label input { width: auto; margin: 0; }
+  #playlists .hint { display: block; margin: 0; }
   #result { white-space: pre-wrap; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; }
   #result.success { background: #e6f7e6; border: 1px solid #4caf50; }
   #result.error { background: #fdecea; border: 1px solid #f44336; }
@@ -58,8 +62,10 @@
 
   <fieldset>
     <legend>Options</legend>
-    <label>Add to playlist(s) <span class="hint">(comma-separated file names)</span>
-      <input type="text" id="add_to_playlist" placeholder="favorites, 2001_hits.m3u">
+    <label>Add to playlist(s)</label>
+    <div id="playlists"><span class="hint">Fill in username and password to load playlists.</span></div>
+    <label>New playlist <span class="hint">(optional, created if it doesn't exist yet)</span>
+      <input type="text" id="new_playlist" placeholder="my_new_playlist">
     </label>
     <label>Cookies from browser <span class="hint">(e.g. firefox, chrome)</span>
       <input type="text" id="cookies_from_browser">
@@ -67,15 +73,81 @@
   </fieldset>
 
   <button type="submit">Download track</button>
+  <button type="button" id="new-track-btn">New track</button>
 </form>
 
 <div id="result" style="display:none;"></div>
 
 <script>
+const apiBase = "{{API_BASE_URL}}";
+const playlistsEl = document.getElementById('playlists');
+let lastLoadedCredentials = null;
+
+function authHeader(username, password) {
+  return 'Basic ' + btoa(`${username}:${password}`);
+}
+
+async function refreshPlaylists() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  if (!username || !password) {
+    lastLoadedCredentials = null;
+    playlistsEl.innerHTML = '<span class="hint">Fill in username and password to load playlists.</span>';
+    return;
+  }
+
+  const credentialsKey = `${username}:${password}`;
+  if (credentialsKey === lastLoadedCredentials) return;
+  lastLoadedCredentials = credentialsKey;
+
+  playlistsEl.innerHTML = '<span class="hint">Loading playlists…</span>';
+
+  try {
+    const response = await fetch(`${apiBase}/playlists`, {
+      headers: { 'Authorization': authHeader(username, password) },
+    });
+    if (!response.ok) {
+      playlistsEl.innerHTML = '<span class="hint">Could not load playlists (check credentials).</span>';
+      return;
+    }
+    const names = await response.json();
+    if (names.length === 0) {
+      playlistsEl.innerHTML = '<span class="hint">No playlists found.</span>';
+      return;
+    }
+    playlistsEl.innerHTML = '';
+    for (const name of names) {
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'playlist-checkbox';
+      checkbox.value = name;
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(' ' + name));
+      playlistsEl.appendChild(label);
+    }
+  } catch (err) {
+    playlistsEl.innerHTML = '<span class="hint">Could not load playlists: ' + err.message + '</span>';
+  }
+}
+
+document.getElementById('username').addEventListener('blur', refreshPlaylists);
+document.getElementById('password').addEventListener('blur', refreshPlaylists);
+
+document.getElementById('new-track-btn').addEventListener('click', () => {
+  for (const id of ['artist', 'album', 'title', 'url', 'year', 'track', 'cover', 'new_playlist', 'cookies_from_browser']) {
+    document.getElementById(id).value = '';
+  }
+  const resultEl = document.getElementById('result');
+  resultEl.style.display = 'none';
+  resultEl.textContent = '';
+  resultEl.className = '';
+});
+
 document.getElementById('track-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const apiBase = "{{API_BASE_URL}}";
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
 
@@ -95,8 +167,10 @@ document.getElementById('track-form').addEventListener('submit', async (e) => {
   const cover = document.getElementById('cover').value;
   if (cover) payload.cover = cover;
 
-  const playlists = document.getElementById('add_to_playlist').value;
-  if (playlists) payload.add_to_playlist = playlists.split(',').map(s => s.trim()).filter(Boolean);
+  const selectedPlaylists = Array.from(document.querySelectorAll('.playlist-checkbox:checked')).map(cb => cb.value);
+  const newPlaylist = document.getElementById('new_playlist').value.trim();
+  if (newPlaylist) selectedPlaylists.push(newPlaylist);
+  if (selectedPlaylists.length > 0) payload.add_to_playlist = selectedPlaylists;
 
   const cookiesFromBrowser = document.getElementById('cookies_from_browser').value;
   if (cookiesFromBrowser) payload.cookies_from_browser = cookiesFromBrowser;
@@ -111,7 +185,7 @@ document.getElementById('track-form').addEventListener('submit', async (e) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+        'Authorization': authHeader(username, password),
       },
       body: JSON.stringify(payload),
     });
