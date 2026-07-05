@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Outify — Get Track</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; }
+  fieldset { margin-bottom: 1.5rem; }
+  label { display: block; margin-top: 0.75rem; font-weight: 600; }
+  input[type=text], input[type=password], input[type=number], input[type=url] {
+    width: 100%; padding: 0.4rem; box-sizing: border-box; margin-top: 0.2rem;
+  }
+  .hint { font-weight: normal; font-size: 0.8rem; color: #666; }
+  button { margin-top: 1.5rem; padding: 0.6rem 1.2rem; font-size: 1rem; cursor: pointer; }
+  #result { white-space: pre-wrap; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; }
+  #result.success { background: #e6f7e6; border: 1px solid #4caf50; }
+  #result.error { background: #fdecea; border: 1px solid #f44336; }
+</style>
+</head>
+<body>
+<h1>Outify — Get Track</h1>
+<form id="track-form">
+  <fieldset>
+    <legend>API connection</legend>
+    <label>Username
+      <input type="text" id="username" required>
+    </label>
+    <label>Password
+      <input type="password" id="password" required>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Track</legend>
+    <label>Artist *
+      <input type="text" id="artist" required>
+    </label>
+    <label>Album *
+      <input type="text" id="album" required>
+    </label>
+    <label>Title *
+      <input type="text" id="title" required>
+    </label>
+    <label>URL *
+      <input type="url" id="url" required>
+    </label>
+    <label>Year
+      <input type="text" id="year">
+    </label>
+    <label>Track number
+      <input type="number" id="track" min="0">
+    </label>
+    <label>Cover URL
+      <input type="url" id="cover">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Options</legend>
+    <label>Add to playlist(s) <span class="hint">(comma-separated file names)</span>
+      <input type="text" id="add_to_playlist" placeholder="favorites, 2001_hits.m3u">
+    </label>
+    <label>Cookies from browser <span class="hint">(e.g. firefox, chrome)</span>
+      <input type="text" id="cookies_from_browser">
+    </label>
+  </fieldset>
+
+  <button type="submit">Download track</button>
+</form>
+
+<div id="result" style="display:none;"></div>
+
+<script>
+document.getElementById('track-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const apiBase = "{{API_BASE_URL}}";
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const payload = {
+    artist: document.getElementById('artist').value,
+    album: document.getElementById('album').value,
+    title: document.getElementById('title').value,
+    url: document.getElementById('url').value,
+  };
+
+  const year = document.getElementById('year').value;
+  if (year) payload.year = year;
+
+  const track = document.getElementById('track').value;
+  if (track) payload.track = parseInt(track, 10);
+
+  const cover = document.getElementById('cover').value;
+  if (cover) payload.cover = cover;
+
+  const playlists = document.getElementById('add_to_playlist').value;
+  if (playlists) payload.add_to_playlist = playlists.split(',').map(s => s.trim()).filter(Boolean);
+
+  const cookiesFromBrowser = document.getElementById('cookies_from_browser').value;
+  if (cookiesFromBrowser) payload.cookies_from_browser = cookiesFromBrowser;
+
+  const resultEl = document.getElementById('result');
+  resultEl.style.display = 'block';
+  resultEl.className = '';
+  resultEl.textContent = 'Downloading…';
+
+  try {
+    const response = await fetch(`${apiBase}/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    resultEl.className = response.ok ? 'success' : 'error';
+    resultEl.textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    resultEl.className = 'error';
+    resultEl.textContent = 'Request failed: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
