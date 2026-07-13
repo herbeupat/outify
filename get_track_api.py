@@ -5,10 +5,12 @@ import os
 import sys
 from functools import wraps
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, request
 
 from Playlist import Playlist
+from SC import SC
 from YT import YT
 
 app = Flask(__name__)
@@ -18,6 +20,14 @@ api_username: str | None = None
 api_password: str | None = None
 api_base_url: str | None = None
 FORM_PATH = Path(__file__).resolve().parent / "html/track_form.html"
+
+
+def is_soundcloud_url(url: str) -> bool:
+    hostname = urlparse(url).hostname
+    if not hostname:
+        return False
+    hostname = hostname.lower()
+    return hostname == "soundcloud.com" or hostname.endswith(".soundcloud.com")
 
 
 @app.get("/")
@@ -98,8 +108,11 @@ def download_track():
     if add_to_playlist is not None and not isinstance(add_to_playlist, list):
         return jsonify({"error": "add_to_playlist must be a list of playlist file names"}), 400
 
-    request_yt_instance = YT(base_dir, 10, True, cookies_from_browser)
-    downloaded_file_path = request_yt_instance.download(url, [artist], album, track, title, year, cover, False)
+    if is_soundcloud_url(url):
+        downloader = SC(base_dir)
+    else:
+        downloader = YT(base_dir, 10, True, cookies_from_browser)
+    downloaded_file_path = downloader.download(url, [artist], album, track, title, year, cover, False)
 
     if downloaded_file_path is None:
         return jsonify({"error": "Download failed"}), 500
