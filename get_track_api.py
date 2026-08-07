@@ -86,6 +86,25 @@ def list_playlists():
     return jsonify(sorted(names))
 
 
+@app.get("/track/metadata")
+@require_auth
+def get_track_metadata():
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"error": "Missing required field: url"}), 400
+
+    if is_soundcloud_url(url):
+        return jsonify({"error": "Metadata retrieval is only supported for YouTube URLs"}), 400
+
+    downloader = YT(base_dir, 10, True, None)
+    metadata = downloader.get_metadata(url)
+
+    if metadata is None:
+        return jsonify({"error": "Metadata not found"}), 404
+
+    return jsonify(metadata)
+
+
 @app.post("/track")
 @require_auth
 def download_track():

@@ -19,6 +19,16 @@
     width: 100%;
   }
   #new-track-btn { margin-top: 0.75rem; }
+  .url-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.2rem; }
+  .url-row input { margin-top: 0; flex: 1; min-width: 0; }
+  #fetch-metadata-btn { margin-top: 0; width: auto; white-space: nowrap; flex-shrink: 0; }
+  #fetch-metadata-btn:disabled { cursor: default; opacity: 0.7; }
+  .spinner {
+    display: inline-block; width: 1rem; height: 1rem;
+    border: 2px solid rgba(0, 0, 0, 0.2); border-top-color: #333;
+    border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #playlists { margin-top: 0.2rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
   #playlists label { display: flex; align-items: center; gap: 0.4rem; font-weight: normal; margin-top: 0; padding: 0.2rem 0; }
   #playlists label input { width: auto; margin: 0; min-width: 1.1rem; min-height: 1.1rem; }
@@ -63,7 +73,10 @@
       <input type="text" id="title" required>
     </label>
     <label>URL *
-      <input type="url" id="url" required>
+      <div class="url-row">
+        <input type="url" id="url" required>
+        <button type="button" id="fetch-metadata-btn">Fetch metadata</button>
+      </div>
     </label>
     <label>Year
       <input type="text" id="year">
@@ -98,9 +111,20 @@
 const apiBase = "{{API_BASE_URL}}";
 const playlistsEl = document.getElementById('playlists');
 let lastLoadedCredentials = null;
+let lastAutoCheckedYear = null;
 
 function authHeader(username, password) {
   return 'Basic ' + btoa(`${username}:${password}`);
+}
+
+function applyYearPlaylistSelection(newYear) {
+  if (lastAutoCheckedYear && lastAutoCheckedYear !== newYear) {
+    const previousCheckbox = document.querySelector(`.playlist-checkbox[value="${CSS.escape(lastAutoCheckedYear)}"]`);
+    if (previousCheckbox) previousCheckbox.checked = false;
+  }
+  const newCheckbox = document.querySelector(`.playlist-checkbox[value="${CSS.escape(newYear)}"]`);
+  if (newCheckbox) newCheckbox.checked = true;
+  lastAutoCheckedYear = newYear;
 }
 
 async function refreshPlaylists() {
@@ -150,6 +174,56 @@ async function refreshPlaylists() {
 
 document.getElementById('username').addEventListener('blur', refreshPlaylists);
 document.getElementById('password').addEventListener('blur', refreshPlaylists);
+
+document.getElementById('fetch-metadata-btn').addEventListener('click', async () => {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const url = document.getElementById('url').value;
+
+  if (!username || !password) {
+    alert('Please fill in username and password first.');
+    return;
+  }
+  if (!url) {
+    alert('Please fill in the URL first.');
+    return;
+  }
+
+  const btn = document.getElementById('fetch-metadata-btn');
+  const originalContent = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const response = await fetch(`${apiBase}/track/metadata?url=${encodeURIComponent(url)}`, {
+      headers: { 'Authorization': authHeader(username, password) },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert('Could not fetch metadata: ' + (data.error || response.statusText));
+      return;
+    }
+
+    if (data.title) document.getElementById('title').value = data.title;
+    if (data.album && data.album.name) document.getElementById('album').value = data.album.name;
+    if (Array.isArray(data.artists) && data.artists.length > 0) {
+      document.getElementById('artist').value = data.artists.map(a => a.name).join(', ');
+    }
+    if (data.year) {
+      document.getElementById('year').value = data.year;
+      applyYearPlaylistSelection(data.year);
+    }
+    if (Array.isArray(data.thumbnail) && data.thumbnail.length > 0) {
+      document.getElementById('cover').value = data.thumbnail[data.thumbnail.length - 1].url;
+    }
+  } catch (err) {
+    alert('Could not fetch metadata: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalContent;
+  }
+});
 
 document.getElementById('new-track-btn').addEventListener('click', () => {
   for (const id of ['artist', 'album', 'title', 'url', 'year', 'track', 'cover', 'new_playlist', 'cookies_from_browser']) {

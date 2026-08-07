@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import time
 from typing import Callable
+from urllib.parse import urlparse, parse_qs
 
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3
@@ -43,6 +44,28 @@ class YT:
     @staticmethod
     def is_youtube_url(url: str):
         return url.startswith('https://music.youtube.com/watch?v=') or url.startswith("https://www.youtube.com/watch?")
+
+
+    @staticmethod
+    def extract_video_id(url: str) -> str | None:
+        query = parse_qs(urlparse(url).query)
+        video_ids = query.get('v')
+        return video_ids[0] if video_ids else None
+
+
+    def get_metadata(self, url: str) -> dict | None:
+        video_id = self.extract_video_id(url)
+        if video_id is None:
+            print(f"{WARNING} Cannot extract video id from {url}{ENDC}")
+            return None
+
+        watch_playlist = self.ytmusic.get_watch_playlist(videoId=video_id, limit=1)
+        tracks = watch_playlist.get('tracks', [])
+        if len(tracks) == 0:
+            print(f"{WARNING} No metadata found for {url}{ENDC}")
+            return None
+
+        return tracks[0]
 
 
     def try_download(self, url: str, artists: list[str], album: str, track: int, title: str, year: str | None, image_url: str | None, output:bool) -> str | None:
