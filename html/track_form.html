@@ -63,6 +63,12 @@
 
   <fieldset>
     <legend>Track</legend>
+    <label>URL *
+      <div class="url-row">
+        <input type="url" id="url" required>
+        <button type="button" id="fetch-metadata-btn">Fetch metadata</button>
+      </div>
+    </label>
     <label>Artist *
       <input type="text" id="artist" required>
     </label>
@@ -71,12 +77,6 @@
     </label>
     <label>Title *
       <input type="text" id="title" required>
-    </label>
-    <label>URL *
-      <div class="url-row">
-        <input type="url" id="url" required>
-        <button type="button" id="fetch-metadata-btn">Fetch metadata</button>
-      </div>
     </label>
     <label>Year
       <input type="text" id="year">
