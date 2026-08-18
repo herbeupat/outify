@@ -8,6 +8,7 @@
   * { box-sizing: border-box; }
   body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
   h1 { font-size: 1.4rem; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   fieldset { margin-bottom: 1.5rem; min-width: 0; }
   label { display: block; margin-top: 0.75rem; font-weight: 600; }
   input[type=text], input[type=password], input[type=number], input[type=url] {
@@ -18,11 +19,19 @@
     margin-top: 1.5rem; padding: 0.7rem 1.2rem; font-size: 1rem; cursor: pointer;
     width: 100%;
   }
-  #new-track-btn { margin-top: 0.75rem; }
+  .form-actions { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem; }
+  .form-actions button { margin-top: 0; }
   .url-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.2rem; }
   .url-row input { margin-top: 0; flex: 1; min-width: 0; }
   #fetch-metadata-btn { margin-top: 0; width: auto; white-space: nowrap; flex-shrink: 0; }
   #fetch-metadata-btn:disabled { cursor: default; opacity: 0.7; }
+  #connect-btn { margin-top: 1rem; }
+  #connect-btn:disabled { cursor: default; opacity: 0.7; }
+  #connection-status { margin-top: 0.75rem; }
+  #disconnect-btn {
+    margin-top: 0; width: auto; flex-shrink: 0;
+    padding: 0.4rem 0.8rem; font-size: 0.9rem;
+  }
   .spinner {
     display: inline-block; width: 1rem; height: 1rem;
     border: 2px solid rgba(0, 0, 0, 0.2); border-top-color: #333;
@@ -39,7 +48,21 @@
 
   @media (min-width: 480px) {
     button { width: auto; }
-    #new-track-btn { margin-left: 0.75rem; }
+    .form-actions { flex-direction: row; }
+  }
+
+  /* Desktop: Track (plus the buttons) on the left, Options on the right. */
+  @media (min-width: 720px) {
+    body.connected { max-width: 960px; }
+    #track-section {
+      display: grid; grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto 1fr; column-gap: 1.5rem;
+    }
+    .track-fields { grid-column: 1; grid-row: 1; }
+    .form-actions { grid-column: 1; grid-row: 2; margin-top: 0; }
+    /* Spanning down to the filler row keeps a long Options column from
+       pushing the buttons away from the bottom of the Track column. */
+    .options-fields { grid-column: 2; grid-row: 1 / -1; align-self: start; }
   }
 
   @media (max-width: 400px) {
@@ -49,60 +72,68 @@
 </style>
 </head>
 <body>
-<h1>Outify — Get Track</h1>
+<div class="page-header">
+  <h1>Outify — Get Track</h1>
+  <button type="button" id="disconnect-btn" style="display:none;">Disconnect</button>
+</div>
 <form id="track-form">
-  <fieldset>
-    <legend>API connection</legend>
+  <div id="login-view">
     <label>Username
       <input type="text" id="username" required>
     </label>
     <label>Password
       <input type="password" id="password" required>
     </label>
-  </fieldset>
+    <button type="button" id="connect-btn">Connect</button>
+    <div id="connection-status" class="hint">Fill in username and password, then connect.</div>
+  </div>
 
-  <fieldset>
-    <legend>Track</legend>
-    <label>URL *
-      <div class="url-row">
-        <input type="url" id="url" required>
-        <button type="button" id="fetch-metadata-btn">Fetch metadata</button>
-      </div>
-    </label>
-    <label>Artist *
-      <input type="text" id="artist" required>
-    </label>
-    <label>Album *
-      <input type="text" id="album" required>
-    </label>
-    <label>Title *
-      <input type="text" id="title" required>
-    </label>
-    <label>Year
-      <input type="text" id="year">
-    </label>
-    <label>Track number
-      <input type="number" id="track" min="0">
-    </label>
-    <label>Cover URL
-      <input type="url" id="cover">
-    </label>
-  </fieldset>
+  <div id="track-section" style="display:none;">
+    <fieldset class="track-fields">
+      <legend>Track</legend>
+      <label>URL *
+        <div class="url-row">
+          <input type="url" id="url" required>
+          <button type="button" id="fetch-metadata-btn">Fetch metadata</button>
+        </div>
+      </label>
+      <label>Artist *
+        <input type="text" id="artist" required>
+      </label>
+      <label>Album *
+        <input type="text" id="album" required>
+      </label>
+      <label>Title *
+        <input type="text" id="title" required>
+      </label>
+      <label>Year
+        <input type="text" id="year">
+      </label>
+      <label>Track number
+        <input type="number" id="track" min="0">
+      </label>
+      <label>Cover URL
+        <input type="url" id="cover">
+      </label>
+    </fieldset>
 
-  <fieldset>
-    <legend>Options</legend>
-    <label>Add to playlist(s)</label>
-    <div id="playlists"><span class="hint">Fill in username and password to load playlists.</span></div>
-    <label>New playlist <span class="hint">(optional, created if it doesn't exist yet)</span>
-      <input type="text" id="new_playlist" placeholder="my_new_playlist">
-    </label>
-    <label>Cookies from browser <span class="hint">(e.g. firefox, chrome)</span>
-      <input type="text" id="cookies_from_browser">
-    </label>
-  </fieldset>
+    <fieldset class="options-fields">
+      <legend>Options</legend>
+      <label>Add to playlist(s)</label>
+      <div id="playlists"></div>
+      <label>New playlist <span class="hint">(optional, created if it doesn't exist yet)</span>
+        <input type="text" id="new_playlist" placeholder="my_new_playlist">
+      </label>
+      <label>Cookies from browser <span class="hint">(e.g. firefox, chrome)</span>
+        <input type="text" id="cookies_from_browser">
+      </label>
+    </fieldset>
 
-  <button type="submit">Download track</button>
-  <button type="button" id="new-track-btn">New track</button>
+    <div class="form-actions">
+      <button type="submit">Download track</button>
+      <button type="button" id="new-track-btn">New track</button>
+    </div>
+  </div>
 </form>
 
 <div id="result" style="display:none;"></div>
@@ -110,7 +141,10 @@
 <script>
 const apiBase = "{{API_BASE_URL}}";
 const playlistsEl = document.getElementById('playlists');
-let lastLoadedCredentials = null;
+const trackSectionEl = document.getElementById('track-section');
+const connectionStatusEl = document.getElementById('connection-status');
+const loginViewEl = document.getElementById('login-view');
+const disconnectBtnEl = document.getElementById('disconnect-btn');
 let lastAutoCheckedYear = null;
 
 function authHeader(username, password) {
@@ -127,53 +161,86 @@ function applyYearPlaylistSelection(newYear) {
   lastAutoCheckedYear = newYear;
 }
 
-async function refreshPlaylists() {
+async function connect() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
 
   if (!username || !password) {
-    lastLoadedCredentials = null;
-    playlistsEl.innerHTML = '<span class="hint">Fill in username and password to load playlists.</span>';
+    connectionStatusEl.textContent = 'Fill in username and password, then connect.';
     return;
   }
 
-  const credentialsKey = `${username}:${password}`;
-  if (credentialsKey === lastLoadedCredentials) return;
-  lastLoadedCredentials = credentialsKey;
-
-  playlistsEl.innerHTML = '<span class="hint">Loading playlists…</span>';
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true;
+  trackSectionEl.style.display = 'none';
+  connectionStatusEl.textContent = 'Connecting…';
 
   try {
     const response = await fetch(`${apiBase}/playlists`, {
       headers: { 'Authorization': authHeader(username, password) },
     });
     if (!response.ok) {
-      playlistsEl.innerHTML = '<span class="hint">Could not load playlists (check credentials).</span>';
+      connectionStatusEl.textContent = 'Could not connect (check credentials).';
       return;
     }
     const names = await response.json();
+    playlistsEl.innerHTML = '';
     if (names.length === 0) {
       playlistsEl.innerHTML = '<span class="hint">No playlists found.</span>';
-      return;
+    } else {
+      for (const name of names) {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'playlist-checkbox';
+        checkbox.value = name;
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(' ' + name));
+        playlistsEl.appendChild(label);
+      }
     }
-    playlistsEl.innerHTML = '';
-    for (const name of names) {
-      const label = document.createElement('label');
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.className = 'playlist-checkbox';
-      checkbox.value = name;
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(' ' + name));
-      playlistsEl.appendChild(label);
-    }
+    lastAutoCheckedYear = null;
+    connectionStatusEl.textContent = '';
+    loginViewEl.style.display = 'none';
+    disconnectBtnEl.style.display = '';
+    trackSectionEl.style.display = '';
+    document.body.classList.add('connected');
   } catch (err) {
-    playlistsEl.innerHTML = '<span class="hint">Could not load playlists: ' + err.message + '</span>';
+    connectionStatusEl.textContent = 'Could not connect: ' + err.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
-document.getElementById('username').addEventListener('blur', refreshPlaylists);
-document.getElementById('password').addEventListener('blur', refreshPlaylists);
+document.getElementById('connect-btn').addEventListener('click', connect);
+
+disconnectBtnEl.addEventListener('click', () => {
+  document.getElementById('password').value = '';
+  playlistsEl.innerHTML = '';
+  lastAutoCheckedYear = null;
+  document.body.classList.remove('connected');
+  disconnectBtnEl.style.display = 'none';
+  trackSectionEl.style.display = 'none';
+  loginViewEl.style.display = '';
+  connectionStatusEl.textContent = 'Fill in username and password, then connect.';
+  document.getElementById('password').focus();
+});
+
+for (const id of ['username', 'password']) {
+  const input = document.getElementById(id);
+  // Changing the credentials invalidates the current session: hide the form until reconnected.
+  input.addEventListener('input', () => {
+    trackSectionEl.style.display = 'none';
+    connectionStatusEl.textContent = 'Fill in username and password, then connect.';
+  });
+  // Enter would otherwise submit the form while the track fields are still hidden.
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      connect();
+    }
+  });
+}
 
 document.getElementById('fetch-metadata-btn').addEventListener('click', async () => {
   const username = document.getElementById('username').value;
